@@ -8,9 +8,26 @@ import { materializeContentFromDb } from '../../scripts/materialize-content';
 
 let inMemoryLock = false;
 
-const STAGING_DIR = path.resolve(process.cwd(), '.build-staging');
+const STAGING_DIR = path.join(path.dirname(env.PUBLIC_DIST_DIR), '.build-staging');
 const STAGING_OUT_DIR = path.join(STAGING_DIR, 'dist');
 const PREV_DIST_DIR = `${env.PUBLIC_DIST_DIR}.prev`;
+
+function safeMoveDir(src: string, dest: string): void {
+  try {
+    fs.renameSync(src, dest);
+  } catch (err: any) {
+    if (err && (err.code === 'EXDEV' || err.code === 'EPERM' || err.code === 'EBUSY')) {
+      if (fs.existsSync(dest)) {
+        fs.rmSync(dest, { recursive: true, force: true });
+      }
+      fs.mkdirSync(dest, { recursive: true });
+      fs.cpSync(src, dest, { recursive: true });
+      fs.rmSync(src, { recursive: true, force: true });
+    } else {
+      throw err;
+    }
+  }
+}
 
 async function runCommandCapture(
   cmd: string[],
@@ -142,9 +159,9 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
       fs.rmSync(PREV_DIST_DIR, { recursive: true, force: true });
     }
     if (fs.existsSync(env.PUBLIC_DIST_DIR)) {
-      fs.renameSync(env.PUBLIC_DIST_DIR, PREV_DIST_DIR);
+      safeMoveDir(env.PUBLIC_DIST_DIR, PREV_DIST_DIR);
     }
-    fs.renameSync(stagingClientDir, env.PUBLIC_DIST_DIR);
+    safeMoveDir(stagingClientDir, env.PUBLIC_DIST_DIR);
 
     if (fs.existsSync(STAGING_DIR)) {
       fs.rmSync(STAGING_DIR, { recursive: true, force: true });
@@ -210,11 +227,11 @@ export async function rollbackLastPublish(userId: number | null): Promise<{
   }
 
   if (fs.existsSync(env.PUBLIC_DIST_DIR)) {
-    fs.renameSync(env.PUBLIC_DIST_DIR, tempDir);
+    safeMoveDir(env.PUBLIC_DIST_DIR, tempDir);
   }
-  fs.renameSync(PREV_DIST_DIR, env.PUBLIC_DIST_DIR);
+  safeMoveDir(PREV_DIST_DIR, env.PUBLIC_DIST_DIR);
   if (fs.existsSync(tempDir)) {
-    fs.renameSync(tempDir, PREV_DIST_DIR);
+    safeMoveDir(tempDir, PREV_DIST_DIR);
   }
 
   const now = new Date();
