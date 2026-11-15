@@ -8,17 +8,32 @@ RUN bun install --no-save
 # Copy application source
 COPY . .
 
-# Create persistent volume mount points and initial empty content dirs
-RUN mkdir -p /data/uploads /data/backups .generated-content/blog .generated-content/projects
-
-# Build initial Astro server + static public bundle (without requiring runtime DB yet)
+# Build Astro SSR server + static bundle → store bootstrap copy in image layer
 ENV NODE_ENV=production
 ENV DATABASE_PATH=/data/portfolio.db
 ENV UPLOAD_DIR=/data/uploads
-ENV PUBLIC_DIST_DIR=/app/dist-public
+ENV PUBLIC_DIST_DIR=/data/dist-public
 
-RUN bun --bun astro build && bunx pagefind --site dist/client && cp -r dist/client /app/dist-public
+RUN bun --bun astro build && \
+    bunx pagefind --site dist/client && \
+    cp -r dist/client/. /app/dist-bootstrap/
 
 EXPOSE 4321
 
-CMD ["sh", "-c", "bun run scripts/migrate.ts && bun run scripts/seed.ts && bun run server/entrypoint.ts"]
+# On startup:
+#   1. Ensure volume subdirs exist
+#   2. Copy bootstrap static ONLY if /data/dist-public is empty/missing (first boot)
+#   3. Run DB migrations (idempotent) + seed admin (idempotent)
+#   4. Start server
+CMD ["sh", "-c", "\
+  mkdir -p /data/uploads /data/backups && \
+  if [ ! -d /data/dist-public ] || [ -z \"$(ls -A /data/dist-public 2>/dev/null)\" ]; then \
+    echo 'First boot: copying bootstrap static site to /data/dist-public' && \
+    cp -r /app/dist-bootstrap/. /data/dist-public/; \
+  else \
+    echo 'Existing /data/dist-public found — skipping bootstrap copy'; \
+  fi && \
+  bun run scripts/migrate.ts && \
+  bun run scripts/seed.ts && \
+  bun run server/entrypoint.ts \
+"]
