@@ -19,9 +19,9 @@ export function getSqlite(): Database {
   if (!sqliteInstance) {
     ensureDirectory(env.DATABASE_PATH);
     sqliteInstance = new Database(env.DATABASE_PATH, { create: true });
+    sqliteInstance.exec('PRAGMA busy_timeout = 10000;');
     sqliteInstance.exec('PRAGMA journal_mode = WAL;');
     sqliteInstance.exec('PRAGMA synchronous = NORMAL;');
-    sqliteInstance.exec('PRAGMA busy_timeout = 5000;');
     sqliteInstance.exec('PRAGMA foreign_keys = ON;');
   }
   return sqliteInstance;
@@ -36,6 +36,10 @@ export function getDb() {
 
 export function closeDb() {
   if (sqliteInstance) {
+    try {
+      sqliteInstance.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+      sqliteInstance.exec('PRAGMA journal_mode = DELETE;');
+    } catch {}
     try {
       sqliteInstance.close(true);
     } catch {
