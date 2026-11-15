@@ -26,6 +26,8 @@ data/
 *.log
 .DS_Store
 Thumbs.db
+*.tar.gz
+*.zip
 
 # Porto prompts & private notes (never commit)
 porto_prompt/
