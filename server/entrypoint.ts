@@ -38,11 +38,22 @@ const MIME_TYPES: Record<string, string> = {
 
 const FALLBACK_DIST_CLIENT = path.resolve(process.cwd(), 'dist/client');
 
-function resolvePublicDistRoot(): string {
+function findStaticFile(urlPathname: string): string | null {
+  // 1. Primary check: user's live published static directory (e.g. /data/dist-public)
   if (fs.existsSync(env.PUBLIC_DIST_DIR)) {
-    return env.PUBLIC_DIST_DIR;
+    const file = resolveStaticFile(env.PUBLIC_DIST_DIR, urlPathname);
+    if (file) return file;
   }
-  return FALLBACK_DIST_CLIENT;
+
+  // 2. Fallback check: bundled client build directory (/app/dist/client)
+  // Ensures hashed _astro/ CSS/JS, fonts, and assets for SSR pages (e.g. /admin/*)
+  // are ALWAYS served even before the first static site publish.
+  if (fs.existsSync(FALLBACK_DIST_CLIENT)) {
+    const file = resolveStaticFile(FALLBACK_DIST_CLIENT, urlPathname);
+    if (file) return file;
+  }
+
+  return null;
 }
 
 function resolveStaticFile(distRoot: string, urlPathname: string): string | null {
@@ -119,8 +130,7 @@ const server = http.createServer(async (req, res) => {
       // Continue if DB unavailable
     }
 
-    const distRoot = resolvePublicDistRoot();
-    const staticFile = resolveStaticFile(distRoot, pathname);
+    const staticFile = findStaticFile(pathname);
     if (staticFile) {
       const ext = path.extname(staticFile).toLowerCase();
       const mime = MIME_TYPES[ext] || 'application/octet-stream';
@@ -163,6 +173,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(env.PORT, env.HOST, () => {
   console.log(`Portfolio server listening on http://${env.HOST}:${env.PORT}`);
-  console.log(`Public static dir: ${resolvePublicDistRoot()}`);
+  console.log(`Primary public dir: ${env.PUBLIC_DIST_DIR}`);
+  console.log(`Fallback client dir: ${FALLBACK_DIST_CLIENT}`);
   console.log(`SQLite database: ${env.DATABASE_PATH}`);
 });

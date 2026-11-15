@@ -22,16 +22,18 @@ EXPOSE 4321
 
 # On startup:
 #   1. Ensure volume subdirs exist
-#   2. Copy bootstrap static ONLY if /data/dist-public is empty/missing (first boot)
-#   3. Run DB migrations (idempotent) + seed admin (idempotent)
-#   4. Start server
+#   2. Copy bootstrap static if /data/dist-public is empty/missing (first boot)
+#   3. Sync latest _astro client bundles so SSR pages always have current hashed CSS/JS
+#   4. Run DB migrations (idempotent) + seed admin (idempotent)
+#   5. Start server
 CMD ["sh", "-c", "\
-  mkdir -p /data/uploads /data/backups && \
+  mkdir -p /data/uploads /data/backups /data/dist-public/_astro && \
   if [ ! -d /data/dist-public ] || [ -z \"$(ls -A /data/dist-public 2>/dev/null)\" ]; then \
     echo 'First boot: copying bootstrap static site to /data/dist-public' && \
     cp -r /app/dist-bootstrap/. /data/dist-public/; \
   else \
-    echo 'Existing /data/dist-public found — skipping bootstrap copy'; \
+    echo 'Existing /data/dist-public found — syncing latest _astro client assets' && \
+    cp -r /app/dist-bootstrap/_astro/. /data/dist-public/_astro/; \
   fi && \
   bun run scripts/migrate.ts && \
   bun run scripts/seed.ts && \
