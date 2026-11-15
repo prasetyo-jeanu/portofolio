@@ -8,6 +8,8 @@ import { materializeContentFromDb } from '../../scripts/materialize-content';
 
 let inMemoryLock = false;
 
+const STAGING_DIR = path.resolve(process.cwd(), '.build-staging');
+const STAGING_OUT_DIR = path.join(STAGING_DIR, 'dist');
 const PREV_DIST_DIR = `${env.PUBLIC_DIST_DIR}.prev`;
 
 function safeCopyDir(src: string, dest: string): void {
@@ -113,8 +115,17 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
     const { postsCount, projectsCount } = await materializeContentFromDb();
     log(`Materialized ${postsCount} published post(s) and ${projectsCount} published project(s).`);
 
-    log('Running Astro build into project dist directory...');
-    const buildRes = await runCommandCapture(['bun', '--bun', 'astro', 'build']);
+    if (fs.existsSync(STAGING_DIR)) {
+      try {
+        fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+      } catch {}
+    }
+    fs.mkdirSync(STAGING_DIR, { recursive: true });
+
+    log('Running Astro build into isolated staging directory...');
+    const buildRes = await runCommandCapture(['bun', '--bun', 'astro', 'build'], {
+      ASTRO_OUT_DIR: STAGING_OUT_DIR,
+    });
     if (buildRes.stdout.trim()) log(buildRes.stdout.trim());
     if (buildRes.stderr.trim()) log(buildRes.stderr.trim());
 
@@ -123,7 +134,7 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
       throw new Error(`Astro build failed (exit code ${buildRes.exitCode}): ${errDetails.slice(-600)}`);
     }
 
-    const builtClientDir = path.resolve(process.cwd(), 'dist/client');
+    const builtClientDir = path.join(STAGING_OUT_DIR, 'client');
     if (!fs.existsSync(builtClientDir)) {
       throw new Error('Client output directory was not created by Astro build.');
     }
@@ -163,6 +174,12 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
     log('Deploying new client build to live public directory...');
     safeCopyDir(builtClientDir, env.PUBLIC_DIST_DIR);
 
+    if (fs.existsSync(STAGING_DIR)) {
+      try {
+        fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+      } catch {}
+    }
+
     const summary = `Published ${postsCount} post(s) and ${projectsCount} project(s) with updated sitemap & Pagefind index.`;
     log(summary);
 
@@ -180,6 +197,12 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log(`ERROR: ${errorMessage}`);
+
+    if (fs.existsSync(STAGING_DIR)) {
+      try {
+        fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+      } catch {}
+    }
 
     await db
       .update(publishingJobs)
