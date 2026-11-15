@@ -3,9 +3,12 @@ node_modules/
 
 # Build & Astro outputs
 dist/
+dist-*/
 dist-public/
 dist-public.prev/
 .build-staging/
+.test-*/
+test-*/
 .astro/
 
 # Generated MDX build artifacts (SQLite is Single Source of Truth)
