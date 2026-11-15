@@ -1,0 +1,70 @@
+{
+  "id": "bahankain-online-store",
+  "project_name": "Bahankain.com Online Fabric Store",
+  "category": "ecommerce",
+  "featured": false,
+  "sort_order": 9,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "Laravel",
+    "Livewire",
+    "MySQL",
+    "Bootstrap",
+    "Docker",
+    "Technical SEO"
+  ],
+  "image": {
+    "file": "bahankain-online-store.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric online fabric store with textile rolls, product swatches, mobile shopping, and search discovery cards in charcoal and gold.",
+      "id": "Ilustrasi isometrik toko kain daring dengan gulungan tekstil, sampel kain, belanja seluler, dan kartu pencarian produk."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Growing Bahankain.com to 35K Monthly Visitors",
+      "slug": "bahankain-online-store",
+      "role": "Full Stack Developer (Solo Builder)",
+      "summary": "Built bahankain.com independently with Laravel, Livewire, and structured SEO—growing organic traffic to 35,000 monthly visitors.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Built bahankain.com independently with Laravel, Livewire, and MySQL, turning offline fabric sales into an online store with product discovery, checkout, and order management."
+        },
+        {
+          "label": "My Approach",
+          "text": "Chose server-rendered pages with Livewire interactions, structured product data, and optimized images to improve discoverability while keeping frontend complexity manageable."
+        },
+        {
+          "label": "Impact",
+          "text": "Reached 35,000 unique monthly visitors and expanded sales beyond store-to-store outreach, helping customers discover fabrics and place orders online."
+        }
+      ]
+    },
+    "id": {
+      "title": "Mengembangkan Bahankain.com hingga 35 Ribu Pengunjung per Bulan",
+      "slug": "bahankain-online-store",
+      "role": "Full Stack Developer (Dikembangkan Secara Mandiri)",
+      "summary": "Membangun Bahankain.com secara mandiri menggunakan Laravel, Livewire, dan optimasi SEO terstruktur. Pengembangannya berhasil meningkatkan trafik organik hingga mencapai 35.000 pengunjung unik setiap bulan.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Membangun Bahankain.com secara mandiri menggunakan Laravel, Livewire, dan MySQL. Saya mengembangkan proses penjualan kain yang sebelumnya dilakukan secara offline menjadi toko online dengan fitur pencarian produk, checkout, dan pengelolaan pesanan."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Memilih pendekatan halaman yang dirender oleh server (*server-side rendering*) dengan interaksi menggunakan Livewire, struktur data produk yang tertata, serta optimasi gambar. Pendekatan ini membantu meningkatkan visibilitas website di mesin pencari tanpa membuat kompleksitas frontend menjadi terlalu tinggi."
+        },
+        {
+          "label": "Dampak",
+          "text": "Mencapai 35.000 pengunjung unik setiap bulan dan memperluas jangkauan penjualan yang sebelumnya lebih banyak mengandalkan pemasaran langsung dari toko ke toko. Pelanggan kini dapat menemukan berbagai produk kain dan melakukan pemesanan secara online."
+        }
+      ]
+    }
+  }
+}

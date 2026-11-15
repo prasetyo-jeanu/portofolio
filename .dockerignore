@@ -1,0 +1,15 @@
+node_modules/
+data/
+dist/
+dist-public/
+dist-public.prev/
+.build-staging/
+.astro/
+src/content/blog/
+src/content/projects/
+porto_prompt/
+.git/
+.env
+*.db
+*.db-wal
+*.db-shm

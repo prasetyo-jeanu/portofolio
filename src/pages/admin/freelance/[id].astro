@@ -1,0 +1,294 @@
+---
+export const prerender = false;
+import { desc, eq } from 'drizzle-orm';
+import { db } from '../../../db';
+import { freelanceProjects, freelanceProjectTranslations, media } from '../../../db/schema';
+import { parseTechStackJson } from '../../../lib/freelance-service';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+
+const rawId = Astro.params.id;
+const isNew = rawId === 'new';
+const freelanceProjectId = isNew ? null : Number(rawId);
+
+if (!isNew && (!freelanceProjectId || Number.isNaN(freelanceProjectId))) {
+  return Astro.redirect('/admin/freelance');
+}
+
+let projRow: typeof freelanceProjects.$inferSelect | null = null;
+let idTrans: typeof freelanceProjectTranslations.$inferSelect | null = null;
+let enTrans: typeof freelanceProjectTranslations.$inferSelect | null = null;
+let techStack: string[] = [];
+
+if (freelanceProjectId) {
+  const found = await db
+    .select()
+    .from(freelanceProjects)
+    .where(eq(freelanceProjects.id, freelanceProjectId))
+    .limit(1);
+  if (found.length === 0) return Astro.redirect('/admin/freelance');
+  projRow = found[0];
+  techStack = parseTechStackJson(projRow.techStackJson);
+
+  const transRows = await db
+    .select()
+    .from(freelanceProjectTranslations)
+    .where(eq(freelanceProjectTranslations.freelanceProjectId, freelanceProjectId));
+  idTrans = transRows.find((t) => t.locale === 'id') || null;
+  enTrans = transRows.find((t) => t.locale === 'en') || null;
+}
+
+const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(50);
+---
+
+<AdminLayout title={isNew ? 'New Freelance Project' : `Edit Freelance #${freelanceProjectId}`} activeNav="freelance">
+  <AdminStickyHeader
+    title={isNew ? 'Tambah Project Freelance' : `Edit Project Freelance #${freelanceProjectId}`}
+    backHref="/admin/freelance"
+    backLabel="Back to Freelance"
+    alertId="freelance-edit-alert"
+  >
+    <Fragment slot="actions">
+      <button type="button" id="fl-save-btn" class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+        Save Freelance Project
+      </button>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <form id="fl-form" data-freelance-id={freelanceProjectId ?? ''} class="space-y-6">
+    <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 space-y-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Shared Project Metadata</h2>
+      <div class="grid gap-4 sm:grid-cols-6">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Category</label>
+          <input id="fl-category" type="text" value={projRow?.category || 'freelance'} placeholder="saas, ai, automation, mobile..." class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+        <div class="sm:col-span-3">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Cover Image (optional)</label>
+          <select id="fl-cover" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
+            <option value="">No cover image</option>
+            {mediaList.map((m) => (
+              <option value={m.id} selected={projRow?.coverMediaId === m.id}>{m.filename}</option>
+            ))}
+          </select>
+        </div>
+        <div class="sm:col-span-1">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Sort Order</label>
+          <input id="fl-sort" type="number" value={projRow?.sortOrder ?? 0} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tech Stack (comma separated)</label>
+        <input id="fl-tech" type="text" value={techStack.join(', ')} placeholder="NodeJs, Fastify, Puppeteer, TypeScript, MySQL" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-center">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Live Demo URL</label>
+          <input id="fl-demo" type="url" value={projRow?.demoUrl || ''} placeholder="https://..." class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Public Repository URL</label>
+          <input id="fl-repo" type="url" value={projRow?.repoUrl || ''} placeholder="https://github.com/..." class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+        <div class="pt-4">
+          <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input id="fl-featured" type="checkbox" checked={projRow?.featured || false} class="h-4 w-4 accent-[var(--accent)]" />
+            Featured Project
+          </label>
+        </div>
+        <div class="pt-4">
+          <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input id="fl-confidential" type="checkbox" checked={projRow?.isConfidential || false} class="h-4 w-4 accent-[var(--accent)]" />
+            Confidential / NDA (Hide repo)
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
+      <button type="button" data-fl-tab="id" class="rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer">
+        Indonesian (ID)
+      </button>
+      <button type="button" data-fl-tab="en" class="rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer">
+        English (EN &middot; Optional)
+      </button>
+    </div>
+
+    <!-- ID Pane -->
+    <section data-fl-pane="id" class="space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Judul Proyek (ID)</label>
+          <input id="id-title" type="text" value={idTrans?.title || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Status (ID)</label>
+          <select id="id-status" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">
+            <option value="draft" selected={idTrans?.status === 'draft'}>Draft</option>
+            <option value="published" selected={!idTrans || idTrans.status === 'published'}>Published</option>
+            <option value="archived" selected={idTrans?.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Slug (ID, otomatis dari judul jika kosong)</label>
+          <input id="id-slug" type="text" value={idTrans?.slug || ''} placeholder="auto-generated-from-title" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Ringkasan Singkat (ID, opsional)</label>
+          <input id="id-summary" type="text" value={idTrans?.summary || ''} placeholder="Ringkasan satu kalimat jika dibutuhkan di kartu" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Kontribusi (ID)</label>
+          <textarea id="id-contribution" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.contribution || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Pendekatan (ID)</label>
+          <textarea id="id-approach" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.approach || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Dampak (ID)</label>
+          <textarea id="id-impact" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.impact || ''}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- EN Pane (Optional) -->
+    <section data-fl-pane="en" class="hidden space-y-4">
+      <p class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 px-4 py-2.5 text-xs text-[var(--text-muted)]">
+        Opsional: kosongkan bagian English (EN) jika belum diterjemahkan. Data tetap bisa disimpan hanya dengan versi ID.
+      </p>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Project Title (EN)</label>
+          <input id="en-title" type="text" value={enTrans?.title || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Status (EN)</label>
+          <select id="en-status" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">
+            <option value="draft" selected={!enTrans || enTrans.status === 'draft'}>Draft</option>
+            <option value="published" selected={enTrans?.status === 'published'}>Published</option>
+            <option value="archived" selected={enTrans?.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Slug (EN)</label>
+          <input id="en-slug" type="text" value={enTrans?.slug || ''} placeholder="auto-generated-from-title" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Short Summary (EN, optional)</label>
+          <input id="en-summary" type="text" value={enTrans?.summary || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Contribution (EN)</label>
+          <textarea id="en-contribution" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.contribution || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Approach (EN)</label>
+          <textarea id="en-approach" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.approach || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Impact (EN)</label>
+          <textarea id="en-impact" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.impact || ''}</textarea>
+        </div>
+      </div>
+    </section>
+  </form>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const tabs = document.querySelectorAll('[data-fl-tab]');
+  const panes = document.querySelectorAll('[data-fl-pane]');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const loc = (tab as HTMLElement).dataset.flTab as 'id' | 'en';
+      tabs.forEach((t) => {
+        const isCurrent = (t as HTMLElement).dataset.flTab === loc;
+        t.className = isCurrent
+          ? 'rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer'
+          : 'rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer';
+      });
+      panes.forEach((p) => {
+        p.classList.toggle('hidden', (p as HTMLElement).dataset.flPane !== loc);
+      });
+    });
+  });
+
+  const val = (id: string) =>
+    (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)?.value || '';
+  const alertBox = document.getElementById('freelance-edit-alert');
+  const showAlert = (msg: string, isErr: boolean) => {
+    if (!alertBox) return;
+    alertBox.textContent = msg;
+    alertBox.className = isErr
+      ? 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400'
+      : 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-emerald-500/15 text-emerald-400';
+  };
+
+  document.getElementById('fl-save-btn')?.addEventListener('click', async () => {
+    const form = document.getElementById('fl-form') as HTMLElement;
+    const rawId = form.dataset.freelanceId;
+    const freelanceProjectId = rawId ? Number(rawId) : null;
+
+    const payload = {
+      id: freelanceProjectId,
+      category: val('fl-category') || 'freelance',
+      featured: (document.getElementById('fl-featured') as HTMLInputElement).checked,
+      isConfidential: (document.getElementById('fl-confidential') as HTMLInputElement).checked,
+      demoUrl: val('fl-demo'),
+      repoUrl: val('fl-repo'),
+      coverMediaId: val('fl-cover') ? Number(val('fl-cover')) : null,
+      sortOrder: Number(val('fl-sort') || 0),
+      techStack: val('fl-tech')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      translations: {
+        id: {
+          title: val('id-title'),
+          slug: val('id-slug'),
+          summary: val('id-summary'),
+          contribution: val('id-contribution'),
+          approach: val('id-approach'),
+          impact: val('id-impact'),
+          status: val('id-status') as 'draft' | 'published' | 'archived',
+        },
+        en: {
+          title: val('en-title'),
+          slug: val('en-slug'),
+          summary: val('en-summary'),
+          contribution: val('en-contribution'),
+          approach: val('en-approach'),
+          impact: val('en-impact'),
+          status: val('en-status') as 'draft' | 'published' | 'archived',
+        },
+      },
+    };
+
+    const { data, error } = await actions.saveFreelanceProject(payload);
+    if (error) {
+      showAlert(error.message || 'Gagal menyimpan project freelance.', true);
+    } else {
+      showAlert('Project freelance tersimpan di database! Jalankan Publish Static Site untuk memperbarui situs publik.', false);
+      if (!freelanceProjectId && data?.freelanceProjectId) {
+        window.location.href = `/admin/freelance/${data.freelanceProjectId}`;
+      }
+    }
+  });
+</script>

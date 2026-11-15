@@ -1,0 +1,68 @@
+{
+  "id": "temple-booking-entry",
+  "project_name": "Booking and Entry Gate Integration for Prambanan and Borobudur Temples",
+  "category": "ticketing",
+  "featured": true,
+  "sort_order": 4,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "Lumen",
+    "Vue.js",
+    "MySQL",
+    "Kafka"
+  ],
+  "image": {
+    "file": "temple-booking-entry.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric Prambanan and Borobudur temple models connected to a shared booking dashboard and visitor entry gates in charcoal and gold.",
+      "id": "Ilustrasi isometrik model Candi Prambanan dan Borobudur yang terhubung ke dasbor pemesanan dan gerbang masuk pengunjung."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Unifying Temple Booking and Gate Access",
+      "slug": "temple-booking-entry",
+      "role": "Full Stack Developer (Solo Builder)",
+      "summary": "Integrated booking and entry-gate validation serving 10,000 daily visitors at Prambanan and 4,000 at Borobudur with transactional ticket redemption.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Built an integrated booking and gate access system for Prambanan and Borobudur as the sole developer, using PHP Lumen, Vue.js, and MySQL."
+        },
+        {
+          "label": "My Approach",
+          "text": "Validated and redeemed tickets in one database transaction to prevent duplicate entry, while moving reporting updates to Kafka to keep gate checks lightweight."
+        },
+        {
+          "label": "Impact",
+          "text": "Supported daily operations serving 10,000 visitors at Prambanan and 4,000 at Borobudur, connecting ticket purchases to consistent admission records."
+        }
+      ]
+    },
+    "id": {
+      "title": "Mengintegrasikan Pemesanan Tiket dengan Sistem Akses Gerbang Masuk",
+      "slug": "temple-booking-entry",
+      "role": "Full Stack Developer (Dikembangkan Secara Mandiri)",
+      "summary": "Mengintegrasikan sistem pemesanan tiket dengan validasi di gerbang masuk untuk melayani 10.000 pengunjung harian di Candi Prambanan dan 4.000 pengunjung di Candi Borobudur, termasuk proses penukaran tiket yang konsisten.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Membangun sistem pemesanan tiket dan akses gerbang masuk yang terintegrasi untuk Candi Prambanan dan Candi Borobudur. Seluruh pengembangan saya kerjakan sendiri menggunakan PHP Lumen, Vue.js, dan MySQL."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Melakukan validasi dan penukaran tiket dalam satu transaksi database untuk mencegah penggunaan tiket lebih dari satu kali. Sementara itu, pembaruan data laporan dipindahkan ke Kafka agar proses pemeriksaan tiket di gerbang tetap ringan dan responsif."
+        },
+        {
+          "label": "Dampak",
+          "text": "Mendukung operasional harian dengan kapasitas 10.000 pengunjung di Prambanan dan 4.000 pengunjung di Borobudur. Sistem ini menghubungkan proses pembelian tiket dengan pencatatan akses masuk secara konsisten."
+        }
+      ]
+    }
+  }
+}

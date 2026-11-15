@@ -1,0 +1,54 @@
+---
+export const prerender = false;
+import { getSiteSettings } from '../../../lib/settings';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+import AdminRepeaterEditor from '../../../components/admin/AdminRepeaterEditor.astro';
+
+const settings = await getSiteSettings();
+---
+
+<AdminLayout title="Expertise (05)" activeNav="expertise">
+  <AdminStickyHeader
+    title="Keahlian / Expertise (Seksi 05)"
+    subtitle="Kelola daftar keahlian bilingual (ID & EN) yang tampil pada bagian 05 di beranda."
+    alertId="expertise-alert"
+  >
+    <Fragment slot="actions">
+      <button id="expertise-save-btn" type="button" class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+        Save Expertise
+      </button>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <AdminRepeaterEditor
+    actionName="updateExpertise"
+    idKey="expertiseId"
+    enKey="expertiseEn"
+    alertId="expertise-alert"
+    saveBtnId="expertise-save-btn"
+    itemsId={settings.expertiseId.map((item) => ({ ...item }))}
+    itemsEn={settings.expertiseEn.map((item) => ({ ...item }))}
+    sectionTitleId="Daftar Keahlian (ID)"
+    sectionTitleEn="Expertise Areas (EN)"
+    addLabelId="+ Tambah Keahlian"
+    addLabelEn="+ Add Expertise"
+    fields={[
+      {
+        name: 'title',
+        label: 'Title',
+        type: 'text',
+        placeholderId: 'Contoh: Aplikasi Web Fullstack',
+        placeholderEn: 'e.g. Fullstack Web Applications',
+      },
+      {
+        name: 'description',
+        label: 'Description',
+        type: 'textarea',
+        rows: 2,
+        placeholderId: 'Deskripsi singkat keahlian...',
+        placeholderEn: 'Short expertise description...',
+      },
+    ]}
+  />
+</AdminLayout>

@@ -1,0 +1,70 @@
+{
+  "id": "publishing-crm",
+  "project_name": "Publishing CRM for Marketing and Production Workflows",
+  "category": "crm",
+  "featured": false,
+  "sort_order": 13,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "Laravel",
+    "CodeIgniter",
+    "Vue.js",
+    "MySQL",
+    "Bootstrap",
+    "Docker"
+  ],
+  "image": {
+    "file": "publishing-crm.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric publishing CRM connecting author leads, relationship histories, book production, and repeat orders in charcoal and gold.",
+      "id": "Ilustrasi isometrik CRM penerbitan yang menghubungkan prospek penulis, riwayat interaksi, produksi buku, dan pesanan berulang."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Connecting Author Leads, Production, and Repeat Orders",
+      "slug": "publishing-crm",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Built a publishing CRM uniting shared author records with separate marketing and book-production pipelines for transparent handoffs.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Designed and built a publishing CRM with Laravel, CodeIgniter, Vue.js, and MySQL, connecting leads, prospective authors, active authors, production, and repeat orders."
+        },
+        {
+          "label": "My Approach",
+          "text": "Used shared author records with separate marketing and production workflows, preserving relationship history while giving each team its own stages, responsibilities, and handoffs."
+        },
+        {
+          "label": "Impact",
+          "text": "Centralized follow-ups, production status, and order history, helping teams track ownership, coordinate handoffs, and identify repeat-order opportunities."
+        }
+      ]
+    },
+    "id": {
+      "title": "Menghubungkan Prospek Penulis, Produksi Buku, hingga Pemesanan Ulang",
+      "slug": "publishing-crm",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Membangun sistem CRM untuk penerbitan yang menyatukan data penulis dalam satu sistem, dengan alur kerja pemasaran dan produksi buku yang terpisah agar proses koordinasi dan serah terima pekerjaan lebih transparan.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Merancang dan membangun sistem CRM untuk penerbitan menggunakan Laravel, CodeIgniter, Vue.js, dan MySQL. Sistem ini menghubungkan data prospek, calon penulis, penulis aktif, proses produksi buku, hingga pemesanan ulang."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Menggunakan data penulis bersama sebagai pusat informasi, tetapi memisahkan alur kerja tim pemasaran dan produksi. Dengan demikian, riwayat hubungan dengan penulis tetap tersimpan, sementara setiap tim memiliki tahapan pekerjaan, tanggung jawab, dan proses serah terima yang jelas."
+        },
+        {
+          "label": "Dampak",
+          "text": "Memusatkan proses tindak lanjut, status produksi, dan riwayat pesanan dalam satu sistem. Hal ini membantu setiap tim memantau tanggung jawab pekerjaan, mengoordinasikan proses antarbagian, serta menemukan peluang pemesanan ulang."
+        }
+      ]
+    }
+  }
+}

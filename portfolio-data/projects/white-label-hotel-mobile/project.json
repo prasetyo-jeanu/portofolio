@@ -1,0 +1,70 @@
+{
+  "id": "white-label-hotel-mobile",
+  "project_name": "White-Label Hotel Frontend Integration",
+  "category": "mobile-web",
+  "featured": false,
+  "sort_order": 12,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "React",
+    "Next.js",
+    "Tailwind CSS",
+    "MUI",
+    "PHP",
+    "CodeIgniter",
+    "MySQL"
+  ],
+  "image": {
+    "file": "white-label-hotel-mobile.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric smartphones displaying a shared hotel booking experience across multiple mobile apps, connected to reusable service blocks in charcoal and gold.",
+      "id": "Ilustrasi isometrik beberapa ponsel yang menampilkan antarmuka pemesanan hotel white-label yang terhubung ke modul layanan bersama."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Bringing Hotel Booking to 11 Mobile Apps",
+      "slug": "white-label-hotel-mobile",
+      "role": "Frontend Developer (API & Mobile WebView Integration)",
+      "summary": "Delivered a themeable React/Next.js WebView hotel booking frontend embedded across 11 apps including myTelkomsel, Astropay, and Flip.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Integrated backend hotel APIs into a white-label React and Next.js booking frontend, embedded through WebViews across client mobile apps."
+        },
+        {
+          "label": "My Approach",
+          "text": "Chose a shared WebView frontend with configurable themes and centralized API handling, trading native UI flexibility for consistent booking flows and simpler maintenance."
+        },
+        {
+          "label": "Impact",
+          "text": "Delivered integrations across 11 apps, including myTelkomsel, Astropay, Flip, and Bank Sulteng Collega, extending hotel booking reach and reducing repeated frontend development."
+        }
+      ]
+    },
+    "id": {
+      "title": "Menghadirkan Fitur Pemesanan Hotel di 11 Aplikasi Mobile",
+      "slug": "white-label-hotel-mobile",
+      "role": "Frontend Developer (Integrasi API & Mobile WebView)",
+      "summary": "Mengembangkan frontend pemesanan hotel berbasis React/Next.js yang dapat disesuaikan dengan tema masing-masing aplikasi. Frontend ini ditanamkan melalui WebView ke dalam 11 aplikasi, termasuk myTelkomsel, Astropay, dan Flip.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Mengintegrasikan backend API hotel ke dalam frontend pemesanan berbasis React dan Next.js dengan konsep white-label. Sistem ini kemudian ditanamkan melalui WebView ke berbagai aplikasi mobile milik klien."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Menggunakan satu frontend WebView bersama dengan konfigurasi tema yang fleksibel dan pengelolaan API terpusat. Pendekatan ini memang mengurangi fleksibilitas tampilan seperti aplikasi native, tetapi membuat alur pemesanan lebih konsisten dan pemeliharaan sistem menjadi lebih sederhana."
+        },
+        {
+          "label": "Dampak",
+          "text": "Berhasil mengintegrasikan fitur pemesanan hotel ke dalam 11 aplikasi, termasuk myTelkomsel, Astropay, Flip, dan Bank Sulteng Collega. Integrasi ini memperluas jangkauan layanan pemesanan hotel sekaligus mengurangi kebutuhan pengembangan frontend yang berulang untuk setiap klien."
+        }
+      ]
+    }
+  }
+}

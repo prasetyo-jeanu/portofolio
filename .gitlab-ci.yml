@@ -1,0 +1,39 @@
+stages:
+  - verify
+  - test
+  - deploy
+
+image: oven/bun:1.3-alpine
+
+variables:
+  NODE_ENV: test
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+typecheck:
+  stage: verify
+  script:
+    - bun install --no-save
+    - bun run typecheck
+
+unit_and_integration_tests:
+  stage: test
+  script:
+    - bun install --no-save
+    - bun test
+
+deploy_easypanel:
+  stage: deploy
+  only:
+    - main
+  when: manual
+  script:
+    - |
+      if [ -n "$EASYPANEL_DEPLOY_WEBHOOK" ]; then
+        wget -qO- --post-data="" "$EASYPANEL_DEPLOY_WEBHOOK"
+      else
+        echo "EASYPANEL_DEPLOY_WEBHOOK not set; configure in GitLab CI/CD variables."
+      fi

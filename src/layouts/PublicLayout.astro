@@ -1,0 +1,139 @@
+---
+import '../styles/global.css';
+import type { Locale } from '../db/schema';
+import { getTranslations } from '../lib/i18n';
+import { buildAbsoluteUrl, type HreflangLink } from '../lib/seo';
+import type { SiteProfileSettings } from '../lib/settings';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  canonicalPath: string;
+  settings: SiteProfileSettings;
+  ogType?: 'website' | 'article';
+  ogImage?: string | null;
+  hreflangs?: HreflangLink[];
+  alternateSwitcherUrl?: string | null;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+  noindex?: boolean;
+}
+
+const {
+  locale,
+  title,
+  description,
+  canonicalPath,
+  settings,
+  ogType = 'website',
+  ogImage,
+  hreflangs = [],
+  alternateSwitcherUrl = null,
+  jsonLd,
+  noindex = false,
+} = Astro.props;
+
+const t = getTranslations(locale);
+const fullTitle = title.includes(settings.siteName) ? title : `${title} | ${settings.siteName}`;
+const canonicalUrl = buildAbsoluteUrl(canonicalPath);
+const effectiveOgImage = ogImage || (!noindex ? '/og-default.png' : null);
+const resolvedOgImage = effectiveOgImage
+  ? effectiveOgImage.startsWith('http')
+    ? effectiveOgImage
+    : buildAbsoluteUrl(effectiveOgImage)
+  : null;
+const isDefaultOgImage = effectiveOgImage === '/og-default.png';
+const jsonLdItems = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+---
+
+<!doctype html>
+<html lang={locale} class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#222831" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    {hreflangs.map((item) => (
+      <link rel="alternate" hreflang={item.locale} href={item.url.startsWith('http') ? item.url : buildAbsoluteUrl(item.url)} />
+    ))}
+
+    <link rel="alternate" type="application/rss+xml" title={`${settings.siteName} RSS (${locale.toUpperCase()})`} href={`/${locale}/rss.xml`} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content={settings.siteName} />
+    <meta property="og:locale" content={locale === 'id' ? 'id_ID' : 'en_US'} />
+    {resolvedOgImage && (
+      <>
+        <meta property="og:image" content={resolvedOgImage} />
+        <meta property="og:image:alt" content={fullTitle} />
+        {isDefaultOgImage && (
+          <>
+            <meta property="og:image:type" content="image/png" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+          </>
+        )}
+      </>
+    )}
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content={resolvedOgImage ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    {resolvedOgImage && (
+      <>
+        <meta name="twitter:image" content={resolvedOgImage} />
+        <meta name="twitter:image:alt" content={fullTitle} />
+      </>
+    )}
+
+    <!-- Theme initialization (dark default per brand palette; prevents FOUC) -->
+    <script is:inline>
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          if (saved === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    {jsonLdItems.map((schema) => (
+      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+    ))}
+  </head>
+  <body class="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-[#FFD369] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[#222831]"
+    >
+      {t.skipToContent}
+    </a>
+
+    <Header
+      locale={locale}
+      siteName={settings.siteName}
+      currentPath={Astro.url.pathname}
+      alternateUrl={alternateSwitcherUrl}
+    />
+
+    <main id="main-content" class="flex-1">
+      <slot />
+    </main>
+
+    <Footer locale={locale} settings={settings} />
+  </body>
+</html>

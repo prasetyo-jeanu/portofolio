@@ -1,0 +1,38 @@
+---
+export interface TocHeading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+export interface Props {
+  headings: TocHeading[];
+  title: string;
+}
+
+const { headings, title } = Astro.props;
+const visibleHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+---
+
+{visibleHeadings.length > 0 && (
+  <aside
+    aria-label={title}
+    class="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5"
+  >
+    <h2 class="mb-3 border-b border-[var(--border-subtle)] pb-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+      {title}
+    </h2>
+    <ul class="space-y-2 text-sm">
+      {visibleHeadings.map((heading) => (
+        <li class={heading.depth === 3 ? 'pl-4 border-l border-[var(--border-subtle)]' : ''}>
+          <a
+            href={`#${heading.slug}`}
+            class="block leading-snug text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
+          >
+            {heading.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </aside>
+)}

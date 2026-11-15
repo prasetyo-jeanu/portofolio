@@ -1,0 +1,70 @@
+{
+  "id": "indihome-loyalty-platform",
+  "project_name": "Telkom IndiHome Loyalty System",
+  "category": "enterprise",
+  "featured": true,
+  "sort_order": 1,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "Node.js",
+    "Fastify",
+    "Vue.js",
+    "PostgreSQL",
+    "Kafka",
+    "Redis",
+    "MongoDB"
+  ],
+  "image": {
+    "file": "indihome-loyalty-platform.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric broadband loyalty dashboard connecting subscriber households, reward points, and redemption vouchers in charcoal and gold.",
+      "id": "Ilustrasi isometrik dasbor loyalitas pelanggan broadband yang menghubungkan rumah tangga pelanggan, poin reward, dan voucher penukaran."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Modernizing IndiHome Loyalty for 11M+ Customers",
+      "slug": "indihome-loyalty-platform",
+      "role": "Engineering Team Lead (3 Programmers)",
+      "summary": "Rebuilt IndiHome’s loyalty CRM with event-driven Kafka transactions, eliminating 30-day delays for 11M+ customers and 1M daily point events.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Led three developers in rebuilding IndiHome’s loyalty CRM with Fastify, Vue.js, and PostgreSQL to address point calculation errors and delays of up to 30 days."
+        },
+        {
+          "label": "My Approach",
+          "text": "Replaced batch processing with Kafka events and idempotent point transactions, accepting added operational complexity to prevent duplicate credits and support safe retries."
+        },
+        {
+          "label": "Impact",
+          "text": "Supported 11M+ customers and 1M daily point-generation requests, enabling timely reward updates and traceable point calculations."
+        }
+      ]
+    },
+    "id": {
+      "title": "Modernisasi Sistem Loyalitas IndiHome untuk Lebih dari 11 Juta Pelanggan",
+      "slug": "indihome-loyalty-platform",
+      "role": "Engineering Team Lead (Memimpin 3 Programmer)",
+      "summary": "Membangun ulang sistem CRM loyalitas IndiHome menggunakan transaksi berbasis event dengan Kafka. Sistem ini mengatasi keterlambatan pemrosesan hingga 30 hari dan melayani lebih dari 11 juta pelanggan serta 1 juta aktivitas perolehan poin setiap hari.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Memimpin tiga developer dalam membangun ulang sistem CRM loyalitas IndiHome menggunakan Fastify, Vue.js, dan PostgreSQL. Pekerjaan ini dilakukan untuk mengatasi kesalahan perhitungan poin dan keterlambatan pemrosesan yang sebelumnya bisa mencapai 30 hari."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Mengganti proses batch dengan event Kafka dan transaksi poin yang bersifat idempotent. Pendekatan ini memang menambah kompleksitas operasional, tetapi dapat mencegah pemberian poin ganda dan memungkinkan proses diulang dengan aman ketika terjadi kegagalan."
+        },
+        {
+          "label": "Dampak",
+          "text": "Sistem mampu melayani lebih dari 11 juta pelanggan dan 1 juta permintaan perolehan poin setiap hari. Pembaruan hadiah menjadi lebih tepat waktu, sementara setiap perhitungan poin dapat ditelusuri dengan lebih mudah."
+        }
+      ]
+    }
+  }
+}

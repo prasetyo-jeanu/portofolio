@@ -1,0 +1,412 @@
+---
+import type { RepeaterFieldDef } from './RepeaterFieldInput.astro';
+import RepeaterItemCard from './RepeaterItemCard.astro';
+
+export type { RepeaterFieldDef };
+
+interface Props {
+  actionName: 'updateExpertise' | 'updateExperience';
+  idKey: string;
+  enKey: string;
+  alertId: string;
+  saveBtnId: string;
+  fields: RepeaterFieldDef[];
+  itemsId: Array<Record<string, string>>;
+  itemsEn: Array<Record<string, string>>;
+  sectionTitleId: string;
+  sectionTitleEn: string;
+  addLabelId: string;
+  addLabelEn: string;
+  headerGridClass?: string;
+}
+
+const {
+  actionName,
+  idKey,
+  enKey,
+  alertId,
+  saveBtnId,
+  fields,
+  itemsId,
+  itemsEn,
+  sectionTitleId,
+  sectionTitleEn,
+  addLabelId,
+  addLabelEn,
+  headerGridClass = 'grid gap-3 sm:grid-cols-2',
+} = Astro.props;
+
+const panes = [
+  {
+    code: 'id' as const,
+    heading: sectionTitleId,
+    addLabel: addLabelId,
+    items: itemsId,
+    hidden: false,
+  },
+  {
+    code: 'en' as const,
+    heading: sectionTitleEn,
+    addLabel: addLabelEn,
+    items: itemsEn,
+    hidden: true,
+  },
+];
+
+const fieldMeta = fields.map((f) => ({ name: f.name, required: f.required !== false }));
+---
+
+<div
+  class="space-y-6"
+  data-repeater-editor
+  data-action-name={actionName}
+  data-id-key={idKey}
+  data-en-key={enKey}
+  data-alert-id={alertId}
+  data-save-btn-id={saveBtnId}
+  data-fields={JSON.stringify(fieldMeta)}
+>
+  <div role="tablist" aria-label="Language tabs" class="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
+    <button
+      type="button"
+      role="tab"
+      aria-selected="true"
+      data-editor-tab="id"
+      class="rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer"
+    >
+      Indonesian (ID)
+    </button>
+    <button
+      type="button"
+      role="tab"
+      aria-selected="false"
+      data-editor-tab="en"
+      class="rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+    >
+      English (EN)
+    </button>
+  </div>
+
+  {panes.map((pane) => (
+    <section
+      data-editor-pane={pane.code}
+      class:list={[
+        'rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-6 space-y-4',
+        pane.hidden && 'hidden',
+      ]}
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">{pane.heading}</h2>
+          <p class="mt-0.5 text-xs text-[var(--text-muted)]">
+            {pane.code === 'id'
+              ? 'Seret handle grip (#) untuk mengubah urutan tampilan.'
+              : 'Drag the grip handle (#) to reorder display order.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          data-repeater-add={pane.code}
+          class="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] hover:border-[var(--accent)] cursor-pointer"
+        >
+          {pane.addLabel}
+        </button>
+      </div>
+
+      <div data-repeater-list={pane.code} class="space-y-3">
+        {pane.items.map((item, idx) => (
+          <RepeaterItemCard
+            fields={fields}
+            locale={pane.code}
+            headerGridClass={headerGridClass}
+            indexLabel={`#${String(idx + 1).padStart(2, '0')}`}
+            item={item}
+          />
+        ))}
+      </div>
+
+      <template data-repeater-template={pane.code}>
+        <RepeaterItemCard
+          fields={fields}
+          locale={pane.code}
+          headerGridClass={headerGridClass}
+        />
+      </template>
+    </section>
+  ))}
+</div>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { attachDragReorder } from '../../lib/admin/drag-reorder';
+
+  const activeTabClass = 'rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer';
+  const inactiveTabClass = 'rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer';
+
+  document.querySelectorAll<HTMLElement>('[data-repeater-editor]').forEach((root) => {
+    const actionName = root.dataset.actionName as 'updateExpertise' | 'updateExperience';
+    const idKey = root.dataset.idKey!;
+    const enKey = root.dataset.enKey!;
+    const alertBox = document.getElementById(root.dataset.alertId!);
+    const saveBtn = document.getElementById(root.dataset.saveBtnId!);
+    const fields = JSON.parse(root.dataset.fields || '[]') as Array<{ name: string; required: boolean }>;
+
+    const tabBtns = root.querySelectorAll<HTMLButtonElement>('[data-editor-tab]');
+    const tabPanes = root.querySelectorAll<HTMLElement>('[data-editor-pane]');
+    tabBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const locale = btn.dataset.editorTab;
+        tabBtns.forEach((b) => {
+          const isCurrent = b.dataset.editorTab === locale;
+          b.setAttribute('aria-selected', String(isCurrent));
+          b.className = isCurrent ? activeTabClass : inactiveTabClass;
+        });
+        tabPanes.forEach((pane) => {
+          pane.classList.toggle('hidden', pane.dataset.editorPane !== locale);
+        });
+      });
+    });
+
+    const showAlert = (message: string, ok: boolean) => {
+      if (!alertBox) return;
+      alertBox.textContent = message;
+      alertBox.className = ok
+        ? 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-emerald-500/15 text-emerald-400'
+        : 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400';
+    };
+
+    const renumberList = (list: HTMLElement, floatingState?: { placeholder: HTMLElement; draggedItem: HTMLElement }) => {
+      const slots = Array.from(list.children).filter(
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement &&
+          (el.matches('[data-repeater-item]') || el.matches('[data-drag-placeholder]')),
+      );
+      slots.forEach((slot, idx) => {
+        const label = `#${String(idx + 1).padStart(2, '0')}`;
+        if (floatingState && slot === floatingState.placeholder) {
+          const badge = floatingState.draggedItem.querySelector('[data-item-index]');
+          if (badge) badge.textContent = label;
+          return;
+        }
+        const badge = slot.querySelector('[data-item-index]');
+        if (badge) badge.textContent = label;
+      });
+    };
+
+    const isSafePreviewUrl = (raw: string) =>
+      (raw.startsWith('/') && !raw.startsWith('//')) || /^https?:\/\//i.test(raw);
+
+    const syncImageField = (wrapper: HTMLElement) => {
+      const input = wrapper.querySelector<HTMLInputElement>('input[data-field]');
+      const img = wrapper.querySelector<HTMLImageElement>('[data-image-preview]');
+      const placeholder = wrapper.querySelector<HTMLElement>('[data-image-placeholder]');
+      const clearBtn = wrapper.querySelector<HTMLButtonElement>('[data-image-clear]');
+      if (!input || !img || !placeholder || !clearBtn) return;
+
+      const raw = input.value.trim();
+      const safe = isSafePreviewUrl(raw) ? raw : '';
+      img.src = safe;
+      img.classList.toggle('hidden', safe.length === 0);
+      placeholder.classList.toggle('hidden', safe.length > 0);
+      clearBtn.classList.toggle('hidden', raw.length === 0);
+    };
+
+    (['id', 'en'] as const).forEach((locale) => {
+      const list = root.querySelector<HTMLElement>(`[data-repeater-list="${locale}"]`);
+      const addBtn = root.querySelector<HTMLButtonElement>(`[data-repeater-add="${locale}"]`);
+      const tpl = root.querySelector<HTMLTemplateElement>(`[data-repeater-template="${locale}"]`);
+      if (!list || !addBtn || !tpl) return;
+
+      addBtn.addEventListener('click', () => {
+        list.appendChild(tpl.content.cloneNode(true) as DocumentFragment);
+        renumberList(list);
+        list.lastElementChild?.querySelector<HTMLElement>('input, textarea')?.focus();
+      });
+
+      list.addEventListener('input', (event) => {
+        const target = event.target as HTMLElement;
+        const wrapper = target.closest<HTMLElement>('[data-image-field]');
+        if (wrapper && target.matches('input[data-field]')) {
+          syncImageField(wrapper);
+        }
+      });
+
+      list.addEventListener('change', async (event) => {
+        const fileInput = event.target as HTMLInputElement;
+        if (!fileInput.matches('[data-image-upload]')) return;
+        const file = fileInput.files?.[0];
+        const wrapper = fileInput.closest<HTMLElement>('[data-image-field]');
+        const fieldInput = wrapper?.querySelector<HTMLInputElement>('input[data-field]');
+        const labelEl = wrapper?.querySelector<HTMLElement>('[data-image-upload-label]');
+        if (!file || !wrapper || !fieldInput) return;
+
+        const row = wrapper.closest<HTMLElement>('[data-repeater-item]');
+        const companyAlt = row?.querySelector<HTMLInputElement>('[data-field="company"]')?.value.trim() || 'Company logo';
+        if (labelEl) labelEl.textContent = '...';
+
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('altId', companyAlt);
+          fd.append('altEn', companyAlt);
+          const res = await fetch('/api/media/upload', { method: 'POST', body: fd });
+          const data = (await res.json()) as { error?: string; media?: { publicUrl?: string } };
+          if (!res.ok || !data.media?.publicUrl) {
+            showAlert(data.error || 'Upload logo gagal.', false);
+          } else {
+            fieldInput.value = data.media.publicUrl;
+            syncImageField(wrapper);
+          }
+        } catch {
+          showAlert('Upload logo gagal.', false);
+        } finally {
+          fileInput.value = '';
+          if (labelEl) labelEl.textContent = 'Upload';
+        }
+      });
+
+      list.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+
+        if (target.closest('[data-image-clear]')) {
+          const wrapper = target.closest<HTMLElement>('[data-image-field]');
+          const fieldInput = wrapper?.querySelector<HTMLInputElement>('input[data-field]');
+          if (wrapper && fieldInput) {
+            fieldInput.value = '';
+            syncImageField(wrapper);
+          }
+          return;
+        }
+
+        const item = target.closest<HTMLElement>('[data-repeater-item]');
+        if (!item) return;
+
+        if (target.closest('[data-item-remove]')) {
+          item.remove();
+          renumberList(list);
+          return;
+        }
+
+        const moveBtn = target.closest<HTMLElement>('[data-item-move]');
+        if (moveBtn) {
+          const dir = moveBtn.dataset.itemMove;
+          if (dir === 'up' && item.previousElementSibling) {
+            list.insertBefore(item, item.previousElementSibling);
+          } else if (dir === 'down' && item.nextElementSibling) {
+            list.insertBefore(item.nextElementSibling, item);
+          }
+          renumberList(list);
+        }
+      });
+
+      attachDragReorder({
+        container: list,
+        itemSelector: '[data-repeater-item]',
+        draggingBodyClass: 'repeater-dragging',
+        createFloating: (draggedItem, startRect) => {
+          const placeholder = document.createElement('div');
+          placeholder.setAttribute('data-drag-placeholder', '');
+          placeholder.className =
+            'rounded-xl border-2 border-dashed border-[var(--accent)]/60 bg-[var(--accent-soft)]/25 transition-all';
+          placeholder.style.height = `${startRect.height}px`;
+
+          list.insertBefore(placeholder, draggedItem);
+          root.appendChild(draggedItem);
+          draggedItem.dataset.dragging = 'true';
+          draggedItem.style.position = 'fixed';
+          draggedItem.style.top = `${startRect.top}px`;
+          draggedItem.style.left = `${startRect.left}px`;
+          draggedItem.style.width = `${startRect.width}px`;
+          draggedItem.style.zIndex = '50';
+          draggedItem.style.pointerEvents = 'none';
+
+          return {
+            floatingEl: draggedItem,
+            placeholder,
+            restore: () => {
+              if (placeholder.parentElement === list) {
+                list.replaceChild(draggedItem, placeholder);
+              } else {
+                placeholder.remove();
+                if (draggedItem.parentElement !== list) {
+                  list.appendChild(draggedItem);
+                }
+              }
+              delete draggedItem.dataset.dragging;
+              draggedItem.style.position = '';
+              draggedItem.style.top = '';
+              draggedItem.style.left = '';
+              draggedItem.style.width = '';
+              draggedItem.style.zIndex = '';
+              draggedItem.style.pointerEvents = '';
+            },
+          };
+        },
+        onOrderChange: (placeholder, draggedItem) => {
+          renumberList(list, { placeholder, draggedItem });
+        },
+        onDragEnd: () => {
+          renumberList(list);
+        },
+      });
+    });
+
+    const collectList = (locale: 'id' | 'en') => {
+      const list = root.querySelector<HTMLElement>(`[data-repeater-list="${locale}"]`);
+      if (!list) return { items: [], incompleteIndex: null as number | null };
+      const rows = Array.from(list.querySelectorAll<HTMLElement>('[data-repeater-item]'));
+      const items: Array<Record<string, string>> = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rec: Record<string, string> = {};
+        let filledAny = 0;
+        let missingRequired = false;
+        for (const field of fields) {
+          const el = row.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field="${field.name}"]`);
+          const v = el?.value.trim() || '';
+          rec[field.name] = v;
+          if (v.length > 0) filledAny++;
+          else if (field.required) missingRequired = true;
+        }
+        if (filledAny === 0) continue;
+        if (missingRequired) return { items: [], incompleteIndex: i + 1 };
+        items.push(rec);
+      }
+      return { items, incompleteIndex: null as number | null };
+    };
+
+    saveBtn?.addEventListener('click', async () => {
+      const idRes = collectList('id');
+      const enRes = collectList('en');
+      if (idRes.incompleteIndex !== null) {
+        showAlert(`Lengkapi semua kolom pada item #${String(idRes.incompleteIndex).padStart(2, '0')} di tab Indonesian (ID), atau hapus barisnya.`, false);
+        return;
+      }
+      if (enRes.incompleteIndex !== null) {
+        showAlert(`Please fill all fields on item #${String(enRes.incompleteIndex).padStart(2, '0')} in the English (EN) tab, or remove the row.`, false);
+        return;
+      }
+
+      const payload = { [idKey]: idRes.items, [enKey]: enRes.items } as never;
+      const { error } =
+        actionName === 'updateExpertise'
+          ? await actions.updateExpertise(payload)
+          : await actions.updateExperience(payload);
+
+      if (error) {
+        showAlert(error.message || 'Failed to save changes.', false);
+      } else {
+        showAlert('Saved! Run Publish Static Site to update static pages.', true);
+      }
+    });
+  });
+</script>
+
+<style>
+  :global(body.repeater-dragging),
+  :global(body.repeater-dragging *) {
+    cursor: grabbing !important;
+    user-select: none !important;
+  }
+</style>

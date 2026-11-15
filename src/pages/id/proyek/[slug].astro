@@ -1,0 +1,17 @@
+---
+export const prerender = true;
+import { getPublishedProjectsByLocale } from '../../../lib/content-queries';
+import ProjectDetailView from '../../../components/views/ProjectDetailView.astro';
+
+export async function getStaticPaths() {
+  const projects = await getPublishedProjectsByLocale('id');
+  return projects.map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { entry, allLocaleProjects: projects },
+  }));
+}
+
+const { entry, allLocaleProjects } = Astro.props;
+---
+
+<ProjectDetailView locale="id" entry={entry} allLocaleProjects={allLocaleProjects} />

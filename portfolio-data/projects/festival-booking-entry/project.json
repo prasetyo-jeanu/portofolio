@@ -1,0 +1,68 @@
+{
+  "id": "festival-booking-entry",
+  "project_name": "Booking and Entry Gate Integration for Dieng Culture Festival and Prambanan Jazz",
+  "category": "ticketing",
+  "featured": false,
+  "sort_order": 7,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "Lumen",
+    "Vue.js",
+    "MySQL",
+    "Kafka"
+  ],
+  "image": {
+    "file": "festival-booking-entry.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric festival registration interface connecting mobile tickets, entry gates, and a concert venue in charcoal and gold.",
+      "id": "Ilustrasi isometrik registrasi festival yang menghubungkan tiket seluler, gerbang masuk, dan panggung acara."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Connecting Festival Registration to Entry Gates",
+      "slug": "festival-booking-entry",
+      "role": "Full Stack Developer (Solo Builder)",
+      "summary": "Delivered mobile-friendly registration and synchronous ticket gate checks serving 170,000 Dieng Culture Festival and 50,000 Prambanan Jazz attendees.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Built a mobile-friendly event registration interface and integrated booking with entry gates using Vue.js, PHP Lumen, and MySQL as the sole developer."
+        },
+        {
+          "label": "My Approach",
+          "text": "Simplified admin-heavy workflows for phone screens and moved reporting updates to Kafka, keeping ticket validation synchronous to protect admission accuracy."
+        },
+        {
+          "label": "Impact",
+          "text": "Supported smooth festival operations for 170,000 visitors and 50,000 spectators across Dieng Culture Festival and Prambanan Jazz."
+        }
+      ]
+    },
+    "id": {
+      "title": "Menghubungkan Registrasi Festival dengan Sistem Gerbang Masuk",
+      "slug": "festival-booking-entry",
+      "role": "Full Stack Developer (Dikembangkan Secara Mandiri)",
+      "summary": "Membangun sistem registrasi yang ramah perangkat mobile dan validasi tiket secara langsung di gerbang masuk. Sistem ini mendukung 170.000 pengunjung Dieng Culture Festival dan 50.000 penonton Prambanan Jazz.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Membangun antarmuka registrasi acara yang nyaman digunakan melalui perangkat mobile serta mengintegrasikan sistem pemesanan dengan gerbang masuk. Seluruh pengembangan saya kerjakan sendiri menggunakan Vue.js, PHP Lumen, dan MySQL."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Menyederhanakan alur kerja administrasi agar lebih mudah digunakan melalui layar ponsel. Proses pembaruan laporan dipindahkan ke Kafka, sementara validasi tiket tetap dilakukan secara langsung untuk menjaga keakuratan proses masuk pengunjung."
+        },
+        {
+          "label": "Dampak",
+          "text": "Mendukung kelancaran penyelenggaraan Dieng Culture Festival dengan 170.000 pengunjung dan Prambanan Jazz dengan 50.000 penonton."
+        }
+      ]
+    }
+  }
+}

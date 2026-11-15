@@ -1,0 +1,154 @@
+---
+import type { Locale } from '../../db/schema';
+import { getTranslations } from '../../lib/i18n';
+import { buildAbsoluteUrl } from '../../lib/seo';
+import { getSiteSettings } from '../../lib/settings';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import Breadcrumb from '../Breadcrumb.astro';
+
+export interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = getTranslations(locale);
+const settings = await getSiteSettings();
+const canonicalPath = locale === 'id' ? '/id/cari' : '/en/search';
+const alternatePath = locale === 'id' ? '/en/search' : '/id/cari';
+
+const hreflangs = [
+  { locale: 'id' as const, url: buildAbsoluteUrl('/id/cari') },
+  { locale: 'en' as const, url: buildAbsoluteUrl('/en/search') },
+  { locale: 'x-default' as const, url: buildAbsoluteUrl('/en/search') },
+];
+
+const resultsLabel = locale === 'id' ? 'hasil ditemukan' : 'results found';
+const emptyResultsLabel = locale === 'id' ? 'Tidak ada kecocokan ditemukan.' : 'No matching entries found.';
+---
+
+<PublicLayout
+  locale={locale}
+  title={`${t.search.title} — ${settings.siteName}`}
+  description={t.search.subtitle}
+  canonicalPath={canonicalPath}
+  hreflangs={hreflangs}
+  alternateSwitcherUrl={alternatePath}
+  settings={settings}
+  noindex={true}
+>
+  <section class="border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+    <div class="mx-auto max-w-[1376px] px-5 py-12 sm:px-10 lg:py-14">
+      <Breadcrumb
+        items={[
+          { label: t.projects.breadcrumbsHome, href: `/${locale}/` },
+          { label: t.search.title },
+        ]}
+      />
+
+      <h1 class="font-display text-3xl font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)] sm:text-4xl">
+        <span class="monograph-num mr-2.5 text-[var(--accent)]">/</span>
+        {t.search.title}
+      </h1>
+      <p class="mt-2.5 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)]">
+        {t.search.subtitle}
+      </p>
+
+      <div class="mt-7 max-w-2xl">
+        <label for="pagefind-input" class="sr-only">
+          {t.search.placeholder}
+        </label>
+        <input
+          id="pagefind-input"
+          type="search"
+          placeholder={t.search.placeholder}
+          autocomplete="off"
+          data-no-index={t.search.noIndexYet}
+          data-empty-query={t.search.emptyQuery}
+          data-results-label={resultsLabel}
+          data-empty-results={emptyResultsLabel}
+          class="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3 font-sans text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-[var(--bg-secondary)] min-h-[42vh]">
+    <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10">
+      <div id="pagefind-results" class="space-y-4">
+        <p class="rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-6 font-mono text-sm text-[var(--text-muted)]">
+          {t.search.emptyQuery}
+        </p>
+      </div>
+    </div>
+  </section>
+</PublicLayout>
+
+<script is:inline>
+  (() => {
+    const input = document.getElementById('pagefind-input');
+    const resultsEl = document.getElementById('pagefind-results');
+    if (!(input instanceof HTMLInputElement) || !resultsEl) return;
+
+    const noIndexText = input.dataset.noIndex || 'Search index is not ready yet.';
+    const emptyQueryText = input.dataset.emptyQuery || 'Enter a keyword to begin searching.';
+    const resultsLabel = input.dataset.resultsLabel || 'results found';
+    const emptyResultsText = input.dataset.emptyResults || 'No matching entries found.';
+
+    let pagefindModule = null;
+    let timer = null;
+
+    async function ensurePagefind() {
+      if (pagefindModule) return pagefindModule;
+      try {
+        pagefindModule = await import('/pagefind/pagefind.js');
+        await pagefindModule.init();
+        return pagefindModule;
+      } catch {
+        return null;
+      }
+    }
+
+    async function runSearch(query) {
+      const trimmed = query.trim();
+      if (!trimmed) {
+        resultsEl.innerHTML = `<p class="rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-6 font-mono text-sm text-[var(--text-muted)]">${emptyQueryText}</p>`;
+        return;
+      }
+
+      const pf = await ensurePagefind();
+      if (!pf) {
+        resultsEl.innerHTML = `<p class="rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-6 font-mono text-sm text-[var(--text-muted)]">${noIndexText}</p>`;
+        return;
+      }
+
+      const search = await pf.search(trimmed);
+      if (!search.results.length) {
+        resultsEl.innerHTML = `<p class="rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-6 font-mono text-sm text-[var(--text-muted)]">${emptyResultsText}</p>`;
+        return;
+      }
+
+      const items = await Promise.all(search.results.slice(0, 12).map((r) => r.data()));
+      const header = `<p class="font-mono text-xs uppercase tracking-[0.12em] text-[var(--accent)]">${items.length} ${resultsLabel}</p>`;
+      const cards = items
+        .map((item) => {
+          const title = (item.meta && item.meta.title) || item.url;
+          return `
+            <a href="${item.url}" class="block rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5 transition-colors hover:border-[var(--accent)]">
+              <h2 class="font-display text-lg font-bold text-[var(--text-primary)]">${title}</h2>
+              <p class="mt-1.5 text-sm leading-relaxed text-[var(--text-secondary)]">${item.excerpt || ''}</p>
+            </a>
+          `;
+        })
+        .join('');
+
+      resultsEl.innerHTML = header + cards;
+    }
+
+    input.addEventListener('input', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        runSearch(input.value);
+      }, 180);
+    });
+  })();
+</script>

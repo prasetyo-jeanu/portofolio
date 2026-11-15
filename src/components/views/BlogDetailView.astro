@@ -1,0 +1,217 @@
+---
+import { render } from 'astro:content';
+import type { Locale } from '../../db/schema';
+import { getRelatedPosts, type BlogEntry } from '../../lib/content-queries';
+import { formatDate, getPostUrl, getTranslations } from '../../lib/i18n';
+import { buildAbsoluteUrl, buildBlogPostingJsonLd, buildBreadcrumbJsonLd } from '../../lib/seo';
+import { getSiteSettings } from '../../lib/settings';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import Breadcrumb from '../Breadcrumb.astro';
+import TableOfContents from '../TableOfContents.astro';
+import PostCard from '../PostCard.astro';
+import CopyCodeEnhancer from '../CopyCodeEnhancer.astro';
+import Callout from '../mdx/Callout.astro';
+import Figure from '../mdx/Figure.astro';
+
+export interface Props {
+  locale: Locale;
+  entry: BlogEntry;
+  allLocalePosts: BlogEntry[];
+}
+
+const { locale, entry, allLocalePosts } = Astro.props;
+const t = getTranslations(locale);
+const settings = await getSiteSettings();
+const { Content, headings } = await render(entry);
+
+const canonicalPath = getPostUrl(locale, entry.data.slug);
+const currentIndex = allLocalePosts.findIndex((p) => p.data.slug === entry.data.slug);
+const prevPost = currentIndex >= 0 && currentIndex + 1 < allLocalePosts.length ? allLocalePosts[currentIndex + 1] : null;
+const nextPost = currentIndex > 0 ? allLocalePosts[currentIndex - 1] : null;
+const relatedPosts = getRelatedPosts(entry, allLocalePosts, 3);
+
+const alternatePath =
+  entry.data.alternateSlug
+    ? getPostUrl(locale === 'id' ? 'en' : 'id', entry.data.alternateSlug)
+    : locale === 'id'
+      ? '/en/blog/'
+      : '/id/blog/';
+
+const hreflangs = [
+  {
+    locale,
+    url: buildAbsoluteUrl(canonicalPath),
+  },
+  ...(entry.data.alternateSlug
+    ? [
+        {
+          locale: (locale === 'id' ? 'en' : 'id') as 'id' | 'en',
+          url: buildAbsoluteUrl(getPostUrl(locale === 'id' ? 'en' : 'id', entry.data.alternateSlug)),
+        },
+      ]
+    : []),
+];
+
+const jsonLd = [
+  buildBlogPostingJsonLd({
+    title: entry.data.seoTitle || entry.data.title,
+    description: entry.data.seoDescription || entry.data.summary,
+    url: buildAbsoluteUrl(canonicalPath),
+    image: entry.data.coverImage,
+    publishedAt: entry.data.publishedAt,
+    updatedAt: entry.data.updatedAt,
+    authorName: settings.developerName,
+    locale,
+    tags: entry.data.tags,
+  }),
+  buildBreadcrumbJsonLd([
+    { name: t.projects.breadcrumbsHome, url: `/${locale}/` },
+    { name: t.nav.blog, url: `/${locale}/blog/` },
+    { name: entry.data.title, url: canonicalPath },
+  ]),
+];
+---
+
+<PublicLayout
+  locale={locale}
+  title={entry.data.seoTitle || entry.data.title}
+  description={entry.data.seoDescription || entry.data.summary}
+  canonicalPath={canonicalPath}
+  ogType="article"
+  ogImage={entry.data.coverImage}
+  hreflangs={hreflangs}
+  alternateSwitcherUrl={alternatePath}
+  settings={settings}
+  jsonLd={jsonLd}
+>
+  <article data-pagefind-body class="bg-[var(--bg-primary)]">
+    <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+      <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10 lg:py-12">
+        <Breadcrumb
+          items={[
+            { label: t.projects.breadcrumbsHome, href: `/${locale}/` },
+            { label: t.nav.blog, href: `/${locale}/blog/` },
+            { label: entry.data.title },
+          ]}
+        />
+
+        <div class="max-w-4xl">
+          <div class="mb-3 flex flex-wrap items-center gap-3 font-mono text-xs text-[var(--text-muted)]">
+            <span class="font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+              {entry.data.category}
+            </span>
+            <span aria-hidden="true">/</span>
+            <time datetime={entry.data.publishedAt.toISOString()} class="monograph-num">
+              {t.blog.publishedOn}: {formatDate(entry.data.publishedAt, locale)}
+            </time>
+            <span aria-hidden="true">/</span>
+            <span class="monograph-num">
+              {entry.data.readingTimeMinutes} {t.blog.readingTime}
+            </span>
+          </div>
+
+          <h1 class="font-display text-3xl font-bold leading-tight tracking-[-0.025em] text-[var(--text-primary)] sm:text-4xl lg:text-[2.65rem]">
+            {entry.data.title}
+          </h1>
+
+          <p class="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
+            {entry.data.summary}
+          </p>
+
+          {entry.data.tags.length > 0 && (
+            <div class="mt-5 flex flex-wrap gap-2">
+              {entry.data.tags.map((tag) => (
+                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10 lg:py-12">
+      <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div>
+          {entry.data.coverImage && (
+            <img
+              src={entry.data.coverImage}
+              alt={entry.data.coverAlt || entry.data.title}
+              class="mb-8 aspect-video w-full rounded-md border border-[var(--border-subtle)] object-cover"
+            />
+          )}
+
+          <div class="prose-tech">
+            <Content components={{ Callout, Figure }} />
+          </div>
+
+          {(prevPost || nextPost) && (
+            <nav
+              aria-label="Article navigation"
+              class="mt-12 grid gap-4 border-t border-[var(--border-subtle)] pt-8 sm:grid-cols-2"
+            >
+              {prevPost ? (
+                <a
+                  href={getPostUrl(locale, prevPost.data.slug)}
+                  class="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 transition-colors hover:border-[var(--accent)]"
+                >
+                  <span class="block font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                    &lt;- {t.blog.prevPost}
+                  </span>
+                  <span class="mt-1 block font-display text-sm font-bold text-[var(--text-primary)]">
+                    {prevPost.data.title}
+                  </span>
+                </a>
+              ) : <div />}
+
+              {nextPost && (
+                <a
+                  href={getPostUrl(locale, nextPost.data.slug)}
+                  class="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 text-right transition-colors hover:border-[var(--accent)]"
+                >
+                  <span class="block font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                    {t.blog.nextPost} -&gt;
+                  </span>
+                  <span class="mt-1 block font-display text-sm font-bold text-[var(--text-primary)]">
+                    {nextPost.data.title}
+                  </span>
+                </a>
+              )}
+            </nav>
+          )}
+        </div>
+
+        <div class="lg:sticky lg:top-20">
+          <TableOfContents headings={headings} title={t.blog.tocTitle} />
+        </div>
+      </div>
+    </div>
+  </article>
+
+  {relatedPosts.length > 0 && (
+    <section class="border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+      <div class="mx-auto max-w-[1376px] px-5 py-12 sm:px-10">
+        <h2 class="mb-6 font-display text-xl font-bold uppercase tracking-[-0.015em] text-[var(--text-primary)]">
+          {t.blog.relatedTitle}
+        </h2>
+        <div class="grid gap-5 md:grid-cols-3">
+          {relatedPosts.map((post) => (
+            <PostCard
+              locale={locale}
+              title={post.data.title}
+              slug={post.data.slug}
+              summary={post.data.summary}
+              category={post.data.category}
+              tags={post.data.tags}
+              readingTimeMinutes={post.data.readingTimeMinutes}
+              publishedAt={post.data.publishedAt}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <CopyCodeEnhancer locale={locale} />
+</PublicLayout>

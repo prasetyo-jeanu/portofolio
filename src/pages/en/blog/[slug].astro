@@ -1,0 +1,17 @@
+---
+export const prerender = true;
+import { getPublishedPostsByLocale } from '../../../lib/content-queries';
+import BlogDetailView from '../../../components/views/BlogDetailView.astro';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPostsByLocale('en');
+  return posts.map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { entry, allLocalePosts: posts },
+  }));
+}
+
+const { entry, allLocalePosts } = Astro.props;
+---
+
+<BlogDetailView locale="en" entry={entry} allLocalePosts={allLocalePosts} />

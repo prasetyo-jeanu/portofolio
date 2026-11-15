@@ -1,0 +1,329 @@
+---
+export const prerender = false;
+import { asc, desc, isNull } from 'drizzle-orm';
+import { db } from '../../../db';
+import { freelanceProjects, freelanceProjectTranslations } from '../../../db/schema';
+import { parseTechStackJson } from '../../../lib/freelance-service';
+import { formatDate } from '../../../lib/i18n';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+
+const activeFreelance = await db
+  .select()
+  .from(freelanceProjects)
+  .where(isNull(freelanceProjects.deletedAt))
+  .orderBy(asc(freelanceProjects.sortOrder), desc(freelanceProjects.featured), asc(freelanceProjects.id));
+
+const translations = await db.select().from(freelanceProjectTranslations);
+const transMap = new Map<number, { id?: typeof translations[number]; en?: typeof translations[number] }>();
+for (const tr of translations) {
+  const entry = transMap.get(tr.freelanceProjectId) || {};
+  entry[tr.locale] = tr;
+  transMap.set(tr.freelanceProjectId, entry);
+}
+
+const featuredActiveCls =
+  'inline-flex items-center gap-1 rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)] hover:brightness-110 cursor-pointer transition-colors';
+const featuredInactiveCls =
+  'inline-flex items-center gap-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] hover:border-[var(--accent)]/50 hover:text-[var(--text-primary)] cursor-pointer transition-colors';
+---
+
+<AdminLayout title="Freelance Projects" activeNav="freelance">
+  <AdminStickyHeader
+    title="Freelance Portfolio Projects"
+    subtitle="Kelola portofolio project freelance (seret # untuk mengubah urutan, klik Featured untuk menandai unggulan)."
+    alertId="freelance-alert"
+  >
+    <Fragment slot="actions">
+      <a
+        href="/admin/freelance/new"
+        class="inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+      >
+        + New Freelance Project
+      </a>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <div class="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+    {activeFreelance.length > 0 ? (
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/60 text-xs uppercase text-[var(--text-muted)]">
+          <tr>
+            <th class="w-20 px-4 py-3">Order</th>
+            <th class="px-4 py-3">Project &amp; Stack</th>
+            <th class="px-4 py-3">ID</th>
+            <th class="px-4 py-3">EN</th>
+            <th class="px-4 py-3">Flags</th>
+            <th class="px-4 py-3">Updated</th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="freelance-tbody" class="divide-y divide-[var(--border-subtle)]">
+          {activeFreelance.map((proj, idx) => {
+            const tr = transMap.get(proj.id) || {};
+            const displayTitle = tr.id?.title || tr.en?.title || `Freelance #${proj.id}`;
+            const techStack = parseTechStackJson(proj.techStackJson);
+            return (
+              <tr
+                data-freelance-row
+                data-freelance-id={proj.id}
+                class="hover:bg-[var(--bg-secondary)]/30"
+              >
+                <td class="px-4 py-3">
+                  <button
+                    type="button"
+                    data-drag-handle
+                    title="Seret untuk mengubah urutan"
+                    aria-label={`Seret ${displayTitle} untuk mengubah urutan`}
+                    class="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-1 text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] cursor-grab active:cursor-grabbing touch-none select-none"
+                  >
+                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="5.5" cy="3.5" r="1.25" />
+                      <circle cx="10.5" cy="3.5" r="1.25" />
+                      <circle cx="5.5" cy="8" r="1.25" />
+                      <circle cx="10.5" cy="8" r="1.25" />
+                      <circle cx="5.5" cy="12.5" r="1.25" />
+                      <circle cx="10.5" cy="12.5" r="1.25" />
+                    </svg>
+                    <span data-row-index class="font-mono text-xs font-semibold text-[var(--accent)]">
+                      #{String(idx + 1).padStart(2, '0')}
+                    </span>
+                  </button>
+                </td>
+                <td class="px-4 py-3">
+                  <a href={`/admin/freelance/${proj.id}`} class="font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]">
+                    {displayTitle}
+                  </a>
+                  <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span class="text-[11px] text-[var(--text-muted)] font-mono">{proj.category}</span>
+                    {techStack.slice(0, 4).map((tech) => (
+                      <span class="rounded bg-[var(--bg-primary)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                        {tech}
+                      </span>
+                    ))}
+                    {techStack.length > 4 && (
+                      <span class="text-[10px] font-mono text-[var(--text-muted)]">+{techStack.length - 4}</span>
+                    )}
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  {tr.id ? (
+                    <span class:list={[
+                      'rounded-md px-2 py-0.5 text-xs font-medium',
+                      tr.id.status === 'published' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400',
+                    ]}>{tr.id.status}</span>
+                  ) : <span class="text-xs text-red-400">missing</span>}
+                </td>
+                <td class="px-4 py-3">
+                  {tr.en ? (
+                    <span class:list={[
+                      'rounded-md px-2 py-0.5 text-xs font-medium',
+                      tr.en.status === 'published' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400',
+                    ]}>{tr.en.status}</span>
+                  ) : <span class="text-xs text-[var(--text-muted)]">optional</span>}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      data-toggle-featured={proj.id}
+                      data-featured={String(proj.featured)}
+                      aria-pressed={proj.featured}
+                      title="Klik untuk mengubah status Featured"
+                      class={proj.featured ? featuredActiveCls : featuredInactiveCls}
+                    >
+                      {proj.featured ? '★ Featured' : '☆ Not Featured'}
+                    </button>
+                    {proj.isConfidential && (
+                      <span class="rounded bg-[var(--bg-secondary)] px-2 py-0.5 text-[11px] text-[var(--text-muted)]">NDA</span>
+                    )}
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-xs text-[var(--text-muted)]">{formatDate(proj.updatedAt, 'en')}</td>
+                <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                  <a href={`/admin/freelance/${proj.id}`} class="text-xs font-medium text-[var(--accent)] hover:underline">Edit</a>
+                  <button type="button" data-delete-freelance={proj.id} class="text-xs font-medium text-red-400 hover:underline cursor-pointer">Archive</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    ) : (
+      <div class="p-10 text-center text-sm text-[var(--text-muted)]">
+        Belum ada project freelance. <a href="/admin/freelance/new" class="text-[var(--accent)] underline">Tambah project freelance pertama</a>.
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+  import { attachDragReorder } from '../../../lib/admin/drag-reorder';
+
+  const alertBox = document.getElementById('freelance-alert');
+  const tbody = document.getElementById('freelance-tbody');
+
+  const featuredActiveCls =
+    'inline-flex items-center gap-1 rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)] hover:brightness-110 cursor-pointer transition-colors';
+  const featuredInactiveCls =
+    'inline-flex items-center gap-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-muted)] hover:border-[var(--accent)]/50 hover:text-[var(--text-primary)] cursor-pointer transition-colors';
+
+  const showAlert = (message: string, ok: boolean) => {
+    if (!alertBox) return;
+    alertBox.textContent = message;
+    alertBox.className = ok
+      ? 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-emerald-500/15 text-emerald-400'
+      : 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400';
+  };
+
+  const getOrderedIds = () =>
+    tbody
+      ? Array.from(tbody.querySelectorAll<HTMLElement>('[data-freelance-row]')).map((row) =>
+          Number(row.dataset.freelanceId),
+        )
+      : [];
+
+  const renumberRows = (floatingState?: { placeholder: HTMLElement; draggedRow: HTMLElement }) => {
+    if (!tbody) return;
+    const slots = Array.from(tbody.children).filter(
+      (el): el is HTMLElement =>
+        el instanceof HTMLElement &&
+        (el.matches('[data-freelance-row]') || el.matches('[data-drag-placeholder]')),
+    );
+    slots.forEach((slot, idx) => {
+      const label = `#${String(idx + 1).padStart(2, '0')}`;
+      if (floatingState && slot === floatingState.placeholder) {
+        const badge = floatingState.draggedRow.querySelector('[data-row-index]');
+        if (badge) badge.textContent = label;
+        return;
+      }
+      const badge = slot.querySelector('[data-row-index]');
+      if (badge) badge.textContent = label;
+    });
+  };
+
+  tbody?.addEventListener('click', async (event) => {
+    const target = event.target as HTMLElement;
+
+    const featuredBtn = target.closest<HTMLButtonElement>('[data-toggle-featured]');
+    if (featuredBtn) {
+      const id = Number(featuredBtn.dataset.toggleFeatured);
+      const current = featuredBtn.dataset.featured === 'true';
+      const nextFeatured = !current;
+
+      featuredBtn.disabled = true;
+      const { data, error } = await actions.toggleFreelanceFeatured({ id, featured: nextFeatured });
+      featuredBtn.disabled = false;
+
+      if (error || !data) {
+        showAlert(error?.message || 'Gagal mengubah status Featured.', false);
+        return;
+      }
+
+      const applied = Boolean(data.featured);
+      featuredBtn.dataset.featured = String(applied);
+      featuredBtn.setAttribute('aria-pressed', String(applied));
+      featuredBtn.className = applied ? featuredActiveCls : featuredInactiveCls;
+      featuredBtn.textContent = applied ? '★ Featured' : '☆ Not Featured';
+      showAlert('Status Featured project freelance diperbarui. Jalankan Publish Static Site untuk memperbarui situs publik.', true);
+      return;
+    }
+
+    const deleteBtn = target.closest<HTMLButtonElement>('[data-delete-freelance]');
+    if (deleteBtn) {
+      const id = Number(deleteBtn.dataset.deleteFreelance);
+      if (!confirm('Arsipkan project freelance ini?')) return;
+      const { error } = await actions.deleteFreelanceProject({ id });
+      if (!error) window.location.reload();
+      else showAlert(error.message, false);
+    }
+  });
+
+  if (tbody) {
+    let beforeOrder = '';
+
+    attachDragReorder({
+      container: tbody,
+      itemSelector: '[data-freelance-row]',
+      draggingBodyClass: 'freelance-dragging',
+      createFloating: (draggedRow, startRect) => {
+        beforeOrder = getOrderedIds().join(',');
+        const cells = Array.from(draggedRow.children).filter(
+          (el): el is HTMLTableCellElement => el instanceof HTMLTableCellElement,
+        );
+        cells.forEach((cell) => {
+          cell.style.width = `${cell.getBoundingClientRect().width}px`;
+        });
+
+        const placeholder = document.createElement('tr');
+        placeholder.setAttribute('data-drag-placeholder', '');
+        const placeholderCell = document.createElement('td');
+        placeholderCell.colSpan = Math.max(cells.length, 1);
+        placeholderCell.style.height = `${startRect.height}px`;
+        placeholderCell.className =
+          'border-y-2 border-dashed border-[var(--accent)]/60 bg-[var(--accent-soft)]/20 p-0';
+        placeholder.appendChild(placeholderCell);
+        tbody.insertBefore(placeholder, draggedRow);
+
+        const floatingTable = document.createElement('table');
+        floatingTable.className =
+          'text-left text-sm rounded-xl overflow-hidden border border-[var(--accent)] bg-[var(--bg-elevated)] shadow-2xl';
+        floatingTable.style.position = 'fixed';
+        floatingTable.style.top = `${startRect.top}px`;
+        floatingTable.style.left = `${startRect.left}px`;
+        floatingTable.style.width = `${startRect.width}px`;
+        floatingTable.style.zIndex = '50';
+        floatingTable.style.pointerEvents = 'none';
+        floatingTable.style.opacity = '0.96';
+        floatingTable.style.transform = 'scale(1.005)';
+        const floatingBody = document.createElement('tbody');
+        floatingBody.appendChild(draggedRow);
+        floatingTable.appendChild(floatingBody);
+        document.body.appendChild(floatingTable);
+
+        return {
+          floatingEl: floatingTable,
+          placeholder,
+          restore: () => {
+            if (placeholder.parentElement === tbody) {
+              tbody.replaceChild(draggedRow, placeholder);
+            } else {
+              placeholder.remove();
+              if (draggedRow.parentElement !== tbody) {
+                tbody.appendChild(draggedRow);
+              }
+            }
+            floatingTable.remove();
+            cells.forEach((cell) => {
+              cell.style.width = '';
+            });
+          },
+        };
+      },
+      onOrderChange: (placeholder, draggedRow) => {
+        renumberRows({ placeholder, draggedRow });
+      },
+      onDragEnd: async () => {
+        renumberRows();
+        const orderedIds = getOrderedIds();
+        if (orderedIds.join(',') !== beforeOrder) {
+          const { error } = await actions.reorderFreelanceProjects({ orderedIds });
+          if (error) {
+            showAlert(error.message || 'Gagal menyimpan urutan project freelance.', false);
+          } else {
+            showAlert('Urutan project freelance berhasil disimpan. Jalankan Publish Static Site untuk memperbarui situs publik.', true);
+          }
+        }
+      },
+    });
+  }
+</script>
+
+<style>
+  :global(body.freelance-dragging),
+  :global(body.freelance-dragging *) {
+    cursor: grabbing !important;
+    user-select: none !important;
+  }
+</style>

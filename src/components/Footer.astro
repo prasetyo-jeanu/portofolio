@@ -1,0 +1,111 @@
+---
+import type { Locale } from '../db/schema';
+import { getLocalizedSectionPath, getTranslations } from '../lib/i18n';
+import type { SiteProfileSettings } from '../lib/settings';
+
+export interface Props {
+  locale: Locale;
+  settings: SiteProfileSettings;
+}
+
+const { locale, settings } = Astro.props;
+const t = getTranslations(locale);
+const year = new Date().getFullYear();
+const headline = locale === 'id' ? settings.headlineId : settings.headlineEn;
+---
+
+<footer class="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+  <div class="mx-auto max-w-[1376px] px-5 py-12 sm:px-10">
+    <div class="grid gap-10 md:grid-cols-3">
+      <div>
+        <div class="flex items-center gap-2.5 font-display text-base font-bold tracking-tight text-[var(--text-primary)]">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded border border-[var(--accent)] bg-[var(--bg-secondary)] font-mono text-xs font-bold text-[var(--accent)]">
+            &lt;/&gt;
+          </span>
+          <span>{settings.siteName}</span>
+        </div>
+        <p class="mt-3 max-w-sm text-sm leading-relaxed text-[var(--text-secondary)]">
+          {headline}
+        </p>
+      </div>
+
+      <div>
+        <h3 class="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+          {t.footer.navigation}
+        </h3>
+        <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+          <li>
+            <a href={getLocalizedSectionPath(locale, 'about')} class="transition-colors hover:text-[var(--accent)]">
+              {t.nav.about}
+            </a>
+          </li>
+          <li>
+            <a href={getLocalizedSectionPath(locale, 'projects')} class="transition-colors hover:text-[var(--accent)]">
+              {t.nav.projects}
+            </a>
+          </li>
+          <li>
+            <a href={getLocalizedSectionPath(locale, 'blog')} class="transition-colors hover:text-[var(--accent)]">
+              {t.nav.blog}
+            </a>
+          </li>
+          <li>
+            <a href={getLocalizedSectionPath(locale, 'contact')} class="transition-colors hover:text-[var(--accent)]">
+              {t.nav.contact}
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+          {t.footer.connect}
+        </h3>
+        <ul class="space-y-2 text-sm text-[var(--text-secondary)]">
+          {settings.email && (
+            <li>
+              <a href={`mailto:${settings.email}`} class="font-mono text-xs transition-colors hover:text-[var(--accent)]">
+                {settings.email}
+              </a>
+            </li>
+          )}
+          {settings.githubUrl && (
+            <li>
+              <a href={settings.githubUrl} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-[var(--accent)]">
+                GitHub
+              </a>
+            </li>
+          )}
+          {settings.gitlabUrl && (
+            <li>
+              <a href={settings.gitlabUrl} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-[var(--accent)]">
+                GitLab
+              </a>
+            </li>
+          )}
+          {settings.linkedinUrl && (
+            <li>
+              <a href={settings.linkedinUrl} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-[var(--accent)]">
+                LinkedIn
+              </a>
+            </li>
+          )}
+          <li>
+            <a href={`/${locale}/rss.xml`} class="font-mono text-xs transition-colors hover:text-[var(--accent)]">
+              {t.footer.rss} ({locale.toUpperCase()})
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-10 flex flex-col items-start justify-between gap-2 border-t border-[var(--border-subtle)] pt-6 font-mono text-xs text-[var(--text-muted)] sm:flex-row sm:items-center">
+      <p class="monograph-num">&copy; {year} {settings.developerName}. {t.footer.rights}</p>
+      <p>
+        <a href={locale === 'id' ? '/' : '/id/'} class="transition-colors hover:text-[var(--accent)]">
+          {t.footer.switchLangNote}
+        </a>
+      </p>
+    </div>
+  </div>
+</footer>

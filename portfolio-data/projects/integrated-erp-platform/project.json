@@ -1,0 +1,71 @@
+{
+  "id": "integrated-erp-platform",
+  "project_name": "Integrated ERP for Accounting, Inventory, Purchasing, and Sales",
+  "category": "erp-systems",
+  "featured": true,
+  "sort_order": 2,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "Node.js",
+    "Fastify",
+    "Nuxt.js",
+    "TypeScript",
+    "Prisma",
+    "PostgreSQL",
+    "Docker",
+    "CI/CD"
+  ],
+  "image": {
+    "file": "integrated-erp-platform.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric ERP dashboard connecting warehouse inventory, purchasing, sales, accounting, and executive reporting in charcoal and gold.",
+      "id": "Ilustrasi isometrik dasbor ERP yang menghubungkan stok gudang, pembelian, penjualan, akuntansi, dan laporan eksekutif."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Cutting ERP Reporting from Days to One Hour",
+      "slug": "integrated-erp-platform",
+      "role": "Full Stack Developer (Solo Builder)",
+      "summary": "Built a unified ERP linking accounting, inventory, purchasing, and sales—reducing accounting reporting and stocktaking from five days to one hour.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Designed and built an ERP independently with Fastify, Nuxt, TypeScript, Prisma, and PostgreSQL, unifying accounting, inventory, purchasing, and sales."
+        },
+        {
+          "label": "My Approach",
+          "text": "Committed stock movements and accounting entries together, prioritizing data consistency and using weighted-average costing to keep inventory valuations aligned with purchasing and sales."
+        },
+        {
+          "label": "Impact",
+          "text": "Reduced accounting reporting and stocktaking from five days to one hour each, while giving the CEO real-time operational visibility."
+        }
+      ]
+    },
+    "id": {
+      "title": "Memangkas Proses Pelaporan ERP dari Lima Hari Menjadi Satu Jam",
+      "slug": "integrated-erp-platform",
+      "role": "Full Stack Developer (Dikembangkan Secara Mandiri)",
+      "summary": "Membangun sistem ERP terpadu yang menghubungkan akuntansi, inventaris, pembelian, dan penjualan. Sistem ini berhasil memangkas waktu pembuatan laporan akuntansi dan proses stok opname dari lima hari menjadi hanya satu jam.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Merancang dan membangun sistem ERP secara mandiri menggunakan Fastify, Nuxt, TypeScript, Prisma, dan PostgreSQL. Sistem ini mengintegrasikan proses akuntansi, inventaris, pembelian, dan penjualan dalam satu platform."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Memastikan setiap perubahan stok dan pencatatan akuntansi tersimpan secara bersamaan. Saya memprioritaskan konsistensi data dan menerapkan metode *weighted-average costing* agar nilai persediaan tetap selaras dengan transaksi pembelian dan penjualan."
+        },
+        {
+          "label": "Dampak",
+          "text": "Memangkas waktu pembuatan laporan akuntansi dan stok opname dari lima hari menjadi hanya satu jam untuk masing-masing proses. Selain itu, CEO dapat memantau kondisi operasional perusahaan secara langsung melalui data yang selalu diperbarui."
+        }
+      ]
+    }
+  }
+}

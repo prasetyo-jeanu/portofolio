@@ -1,0 +1,263 @@
+---
+export const prerender = false;
+import { desc } from 'drizzle-orm';
+import { db } from '../../../db';
+import { media } from '../../../db/schema';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+
+const items = await db.select().from(media).orderBy(desc(media.createdAt));
+---
+
+<AdminLayout title="Media Library" activeNav="media">
+  <AdminStickyHeader
+    title="Media Library"
+    subtitle="Upload validated images (PNG, JPEG, WebP, GIF, AVIF, max 5 MB) to persistent storage."
+  >
+    <Fragment slot="actions">
+      <div
+        class="inline-flex items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1"
+        role="group"
+        aria-label="Media view mode"
+      >
+        <button
+          type="button"
+          data-media-view-btn="grid"
+          aria-pressed="true"
+          class="media-view-btn inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <rect x="2" y="2" width="5" height="5" rx="0.5"></rect>
+            <rect x="9" y="2" width="5" height="5" rx="0.5"></rect>
+            <rect x="2" y="9" width="5" height="5" rx="0.5"></rect>
+            <rect x="9" y="9" width="5" height="5" rx="0.5"></rect>
+          </svg>
+          <span>Grid</span>
+        </button>
+        <button
+          type="button"
+          data-media-view-btn="list"
+          aria-pressed="false"
+          class="media-view-btn inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <line x1="2.5" y1="4" x2="13.5" y2="4"></line>
+            <line x1="2.5" y1="8" x2="13.5" y2="8"></line>
+            <line x1="2.5" y1="12" x2="13.5" y2="12"></line>
+          </svg>
+          <span>List</span>
+        </button>
+      </div>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <form id="media-upload-form" class="mb-8 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Image File</label>
+        <input id="media-file" name="file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" required class="w-full text-sm text-[var(--text-secondary)]" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Alt Text (ID)</label>
+        <input name="altId" type="text" placeholder="Deskripsi gambar" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Alt Text (EN)</label>
+        <input name="altEn" type="text" placeholder="Image description" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+      </div>
+    </div>
+    <div id="media-upload-status" class="hidden mt-4 rounded-xl px-4 py-2.5 text-sm"></div>
+    <button type="submit" id="media-upload-btn" class="mt-4 rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+      Upload Image
+    </button>
+  </form>
+
+  {items.length > 0 ? (
+    <div id="media-library-grid" data-view="grid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((item) => (
+        <div class="media-item-card overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex flex-col">
+          <div class="media-item-thumb aspect-video bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] overflow-hidden">
+            <img src={item.publicUrl} alt={item.altEn || item.filename} loading="lazy" class="h-full w-full object-cover" />
+          </div>
+          <div class="media-item-body p-4 flex-1 flex flex-col justify-between space-y-3">
+            <div class="media-item-meta min-w-0">
+              <p class="font-mono text-xs font-semibold text-[var(--text-primary)] truncate">{item.filename}</p>
+              <p class="text-[11px] text-[var(--text-muted)]">{item.mimeType} &middot; {(item.sizeBytes / 1024).toFixed(1)} KB</p>
+              <p class="mt-1 font-mono text-[11px] text-[var(--accent)] truncate">{item.publicUrl}</p>
+            </div>
+
+            <div class="media-item-actions flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]">
+              <button
+                type="button"
+                data-copy-mdx={`<Figure src="${item.publicUrl}" alt="${item.altEn || item.altId || item.filename}" caption="" />`}
+                class="text-xs font-medium text-[var(--accent)] hover:underline cursor-pointer"
+              >
+                Copy Figure MDX
+              </button>
+              <button
+                type="button"
+                data-delete-media={item.id}
+                class="text-xs font-medium text-red-400 hover:underline cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div class="rounded-2xl border border-dashed border-[var(--border-subtle)] p-10 text-center text-sm text-[var(--text-muted)]">
+      No images uploaded yet.
+    </div>
+  )}
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const form = document.getElementById('media-upload-form') as HTMLFormElement | null;
+  const statusEl = document.getElementById('media-upload-status');
+  const btn = document.getElementById('media-upload-btn');
+
+  if (form && statusEl && btn) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.setAttribute('disabled', 'true');
+      btn.textContent = 'Uploading...';
+      statusEl.classList.add('hidden');
+
+      const fd = new FormData(form);
+      const res = await fetch('/api/media/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      btn.removeAttribute('disabled');
+      btn.textContent = 'Upload Image';
+
+      if (!res.ok) {
+        statusEl.textContent = data.error || 'Upload failed.';
+        statusEl.className = 'mt-4 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400';
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
+  document.querySelectorAll('[data-copy-mdx]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const snippet = (b as HTMLElement).dataset.copyMdx || '';
+      await navigator.clipboard.writeText(snippet);
+      b.textContent = 'Copied!';
+      setTimeout(() => (b.textContent = 'Copy Figure MDX'), 1500);
+    });
+  });
+
+  const MEDIA_VIEW_KEY = 'admin-media-view';
+  const mediaGrid = document.getElementById('media-library-grid');
+  const mediaViewBtns = document.querySelectorAll('[data-media-view-btn]');
+
+  function applyMediaView(mode: 'grid' | 'list') {
+    if (mediaGrid) {
+      mediaGrid.setAttribute('data-view', mode);
+    }
+    mediaViewBtns.forEach((button) => {
+      const btnMode = button.getAttribute('data-media-view-btn');
+      button.setAttribute('aria-pressed', btnMode === mode ? 'true' : 'false');
+    });
+  }
+
+  try {
+    const savedMode = localStorage.getItem(MEDIA_VIEW_KEY);
+    if (savedMode === 'list' || savedMode === 'grid') {
+      applyMediaView(savedMode);
+    }
+  } catch {
+    // Ignore storage restriction
+  }
+
+  mediaViewBtns.forEach((button) => {
+    button.addEventListener('click', () => {
+      const nextMode = button.getAttribute('data-media-view-btn') === 'list' ? 'list' : 'grid';
+      applyMediaView(nextMode);
+      try {
+        localStorage.setItem(MEDIA_VIEW_KEY, nextMode);
+      } catch {
+        // Ignore storage restriction
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-delete-media]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const id = Number((b as HTMLElement).dataset.deleteMedia);
+      if (!confirm('Delete this image file permanently?')) return;
+      const { error } = await actions.deleteMedia({ id });
+      if (!error) window.location.reload();
+      else alert(error.message);
+    });
+  });
+</script>
+
+<style>
+  .media-view-btn {
+    color: var(--text-secondary);
+    background-color: transparent;
+  }
+  .media-view-btn:hover {
+    color: var(--text-primary);
+  }
+  .media-view-btn[aria-pressed='true'] {
+    background-color: var(--accent);
+    color: #000000;
+    font-weight: 600;
+  }
+
+  #media-library-grid[data-view='list'] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.625rem;
+  }
+  #media-library-grid[data-view='list'] .media-item-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.875rem;
+  }
+  #media-library-grid[data-view='list'] .media-item-thumb {
+    width: 3.75rem;
+    height: 3.75rem;
+    flex-shrink: 0;
+    aspect-ratio: 1 / 1;
+    border-bottom: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.5rem;
+  }
+  #media-library-grid[data-view='list'] .media-item-body {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0;
+    min-width: 0;
+    --tw-space-y-reverse: 0;
+  }
+  #media-library-grid[data-view='list'] .media-item-body > :not(:first-child) {
+    margin-top: 0;
+  }
+  #media-library-grid[data-view='list'] .media-item-actions {
+    border-top: 0;
+    padding-top: 0;
+    justify-content: flex-start;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    #media-library-grid[data-view='list'] .media-item-body {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    #media-library-grid[data-view='list'] .media-item-actions {
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+  }
+</style>

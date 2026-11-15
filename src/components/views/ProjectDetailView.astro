@@ -1,0 +1,346 @@
+---
+import { render } from 'astro:content';
+import type { Locale } from '../../db/schema';
+import { getRelatedProjects, type ProjectEntry } from '../../lib/content-queries';
+import { formatDate, getLocalizedSectionPath, getProjectUrl, getTranslations } from '../../lib/i18n';
+import { buildAbsoluteUrl, buildBreadcrumbJsonLd, buildProjectJsonLd } from '../../lib/seo';
+import { getSiteSettings } from '../../lib/settings';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import Breadcrumb from '../Breadcrumb.astro';
+import TableOfContents from '../TableOfContents.astro';
+import ProjectCard from '../ProjectCard.astro';
+import CopyCodeEnhancer from '../CopyCodeEnhancer.astro';
+import Callout from '../mdx/Callout.astro';
+import Figure from '../mdx/Figure.astro';
+
+export interface Props {
+  locale: Locale;
+  entry: ProjectEntry;
+  allLocaleProjects: ProjectEntry[];
+}
+
+const { locale, entry, allLocaleProjects } = Astro.props;
+const t = getTranslations(locale);
+const settings = await getSiteSettings();
+const { Content, headings } = await render(entry);
+
+const canonicalPath = getProjectUrl(locale, entry.data.slug);
+const currentIndex = allLocaleProjects.findIndex((p) => p.data.slug === entry.data.slug);
+const prevProject = currentIndex > 0 ? allLocaleProjects[currentIndex - 1] : null;
+const nextProject =
+  currentIndex >= 0 && currentIndex + 1 < allLocaleProjects.length ? allLocaleProjects[currentIndex + 1] : null;
+const relatedProjects = getRelatedProjects(entry, allLocaleProjects, 3);
+
+const otherLocale: Locale = locale === 'id' ? 'en' : 'id';
+const alternateSlug = entry.data.alternateSlug;
+const alternatePath = alternateSlug
+  ? getProjectUrl(otherLocale, alternateSlug)
+  : getLocalizedSectionPath(otherLocale, 'projects');
+
+const enSlug = locale === 'en' ? entry.data.slug : alternateSlug;
+const idSlug = locale === 'id' ? entry.data.slug : alternateSlug;
+const hreflangs = [
+  {
+    locale,
+    url: buildAbsoluteUrl(canonicalPath),
+  },
+  ...(alternateSlug
+    ? [
+        {
+          locale: otherLocale,
+          url: buildAbsoluteUrl(getProjectUrl(otherLocale, alternateSlug)),
+        },
+      ]
+    : []),
+  ...(enSlug
+    ? [
+        {
+          locale: 'x-default' as const,
+          url: buildAbsoluteUrl(getProjectUrl('en', enSlug)),
+        },
+      ]
+    : idSlug
+      ? [
+          {
+            locale: 'x-default' as const,
+            url: buildAbsoluteUrl(getProjectUrl('id', idSlug)),
+          },
+        ]
+      : []),
+];
+
+const homeHref = getLocalizedSectionPath(locale, 'home');
+const projectsHref = getLocalizedSectionPath(locale, 'projects');
+const contactHref = getLocalizedSectionPath(locale, 'contact');
+const authorDisplayName =
+  settings.developerName && settings.developerName !== 'Fullstack Engineer'
+    ? settings.developerName
+    : settings.siteName;
+
+const pageTitle = entry.data.seoTitle || `${entry.data.title} — ${t.projects.title}`;
+const pageDescription = entry.data.seoDescription || entry.data.summary;
+const ogImage = entry.data.ogImageUrl || entry.data.coverImage || '/og-default.png';
+
+const jsonLd = [
+  buildProjectJsonLd({
+    title: entry.data.seoTitle || entry.data.title,
+    description: pageDescription,
+    url: buildAbsoluteUrl(canonicalPath),
+    image: ogImage,
+    publishedAt: entry.data.publishedAt,
+    updatedAt: entry.data.updatedAt,
+    authorName: authorDisplayName,
+    locale,
+    category: entry.data.category,
+    tags: entry.data.tags,
+  }),
+  buildBreadcrumbJsonLd([
+    { name: t.projects.breadcrumbsHome, url: homeHref },
+    { name: t.nav.projects, url: projectsHref },
+    { name: entry.data.title, url: canonicalPath },
+  ]),
+];
+---
+
+<PublicLayout
+  locale={locale}
+  title={pageTitle}
+  description={pageDescription}
+  canonicalPath={canonicalPath}
+  ogType="article"
+  ogImage={ogImage}
+  hreflangs={hreflangs}
+  alternateSwitcherUrl={alternatePath}
+  settings={settings}
+  jsonLd={jsonLd}
+>
+  <article data-pagefind-body class="bg-[var(--bg-primary)]">
+    <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+      <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10 lg:py-12">
+        <Breadcrumb
+          items={[
+            { label: t.projects.breadcrumbsHome, href: homeHref },
+            { label: t.nav.projects, href: projectsHref },
+            { label: entry.data.title },
+          ]}
+        />
+
+        <div class="max-w-4xl">
+          <div class="mb-3 flex flex-wrap items-center gap-2.5 font-mono text-xs text-[var(--text-muted)]">
+            <span class="font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+              {entry.data.category}
+            </span>
+            {entry.data.featured && (
+              <span class="rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--accent)]">
+                {t.projects.featuredBadge}
+              </span>
+            )}
+            {entry.data.isConfidential && (
+              <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 text-[11px] uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+                {t.projects.confidentialBadge}
+              </span>
+            )}
+          </div>
+
+          <h1 class="font-display text-3xl font-bold leading-tight tracking-[-0.025em] text-[var(--text-primary)] sm:text-4xl lg:text-[2.65rem]">
+            {entry.data.title}
+          </h1>
+
+          {entry.data.role && (
+            <p class="mt-2 font-mono text-xs text-[var(--text-muted)]">
+              {t.projects.roleLabel}: {entry.data.role}
+            </p>
+          )}
+
+          {entry.data.summary && (
+            <p class="mt-4 max-w-[68ch] text-base leading-relaxed text-[var(--text-secondary)]">
+              {entry.data.summary}
+            </p>
+          )}
+
+          {entry.data.tags.length > 0 && (
+            <div class="mt-5 flex flex-wrap gap-2">
+              {entry.data.tags.map((tag) => (
+                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10 lg:py-12">
+      <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+        <div class="min-w-0">
+          {entry.data.coverImage && (
+            <figure class="mb-8 overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[#222831] p-4 sm:p-6">
+              <img
+                src={entry.data.coverImage}
+                alt={entry.data.coverAlt || entry.data.title}
+                width="640"
+                height="640"
+                loading="eager"
+                decoding="async"
+                class="mx-auto aspect-square w-full max-w-[440px] rounded border border-[var(--border-ledger)] object-cover"
+              />
+            </figure>
+          )}
+
+          {entry.data.isConfidential && (
+            <p class="mb-6 rounded border border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 font-mono text-xs leading-relaxed text-[var(--text-secondary)]">
+              {t.projects.confidentialNote}
+            </p>
+          )}
+
+          <div class="prose-tech">
+            <Content components={{ Callout, Figure }} />
+          </div>
+
+          {(entry.data.demoUrl || entry.data.repoUrl) && (
+            <div class="mt-8 flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-6">
+              {entry.data.demoUrl && (
+                <a
+                  href={entry.data.demoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex min-h-[42px] items-center rounded bg-[var(--accent-fill)] px-5 py-2 text-sm font-semibold text-[var(--accent-ink)] transition-all hover:brightness-95"
+                >
+                  {t.projects.demoButton}
+                </a>
+              )}
+              {entry.data.repoUrl && (
+                <a
+                  href={entry.data.repoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex min-h-[42px] items-center rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-5 py-2 text-sm font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  {t.projects.repoButton}
+                </a>
+              )}
+            </div>
+          )}
+
+          {(prevProject || nextProject) && (
+            <nav
+              aria-label={t.projects.modalNavLabel}
+              class="mt-12 grid gap-4 border-t border-[var(--border-subtle)] pt-8 sm:grid-cols-2"
+            >
+              {prevProject ? (
+                <a
+                  href={getProjectUrl(locale, prevProject.data.slug)}
+                  class="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 transition-colors hover:border-[var(--accent)]"
+                >
+                  <span class="block font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                    &lt;- {t.projects.prevProject}
+                  </span>
+                  <span class="mt-1 block font-display text-sm font-bold text-[var(--text-primary)]">
+                    {prevProject.data.title}
+                  </span>
+                </a>
+              ) : (
+                <div />
+              )}
+
+              {nextProject && (
+                <a
+                  href={getProjectUrl(locale, nextProject.data.slug)}
+                  class="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 text-right transition-colors hover:border-[var(--accent)]"
+                >
+                  <span class="block font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                    {t.projects.nextProject} -&gt;
+                  </span>
+                  <span class="mt-1 block font-display text-sm font-bold text-[var(--text-primary)]">
+                    {nextProject.data.title}
+                  </span>
+                </a>
+              )}
+            </nav>
+          )}
+        </div>
+
+        <aside class="space-y-5 lg:sticky lg:top-20">
+          {headings.length > 0 && <TableOfContents headings={headings} title={t.blog.tocTitle} />}
+
+          <div class="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+            <dl class="space-y-3.5 text-sm">
+              <div>
+                <dt class="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                  {t.projects.categoryLabel}
+                </dt>
+                <dd class="mt-1 font-medium text-[var(--text-primary)]">{entry.data.category}</dd>
+              </div>
+              {entry.data.role && (
+                <div class="border-t border-[var(--border-ledger)] pt-3">
+                  <dt class="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                    {t.projects.roleLabel}
+                  </dt>
+                  <dd class="mt-1 font-medium text-[var(--text-primary)]">{entry.data.role}</dd>
+                </div>
+              )}
+              <div class="border-t border-[var(--border-ledger)] pt-3">
+                <dt class="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                  {t.projects.publishedLabel}
+                </dt>
+                <dd class="monograph-num mt-1 font-mono text-xs text-[var(--text-secondary)]">
+                  <time datetime={entry.data.publishedAt.toISOString()}>
+                    {formatDate(entry.data.publishedAt, locale)}
+                  </time>
+                </dd>
+              </div>
+            </dl>
+
+            <div class="mt-5 border-t border-[var(--border-ledger)] pt-4">
+              <p class="text-xs leading-relaxed text-[var(--text-secondary)]">
+                {t.projects.sidebarCtaTitle}
+              </p>
+              <a
+                href={contactHref}
+                class="mt-3 inline-flex min-h-[40px] w-full items-center justify-center rounded bg-[var(--accent-fill)] px-4 py-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--accent-ink)] transition-all hover:brightness-95"
+              >
+                {t.projects.sidebarCtaButton}
+              </a>
+              <a
+                href={projectsHref}
+                class="mt-2.5 inline-flex min-h-[36px] w-full items-center justify-center rounded border border-[var(--border-subtle)] px-4 py-1.5 font-mono text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {t.projects.backToList}
+              </a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </article>
+
+  {relatedProjects.length > 0 && (
+    <section class="border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+      <div class="mx-auto max-w-[1376px] px-5 py-12 sm:px-10">
+        <h2 class="mb-6 font-display text-xl font-bold uppercase tracking-[-0.015em] text-[var(--text-primary)]">
+          {t.projects.relatedTitle}
+        </h2>
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {relatedProjects.map((project) => (
+            <ProjectCard
+              locale={locale}
+              title={project.data.title}
+              slug={project.data.slug}
+              role={project.data.role}
+              summary={project.data.summary}
+              category={project.data.category}
+              tags={project.data.tags}
+              featured={project.data.featured}
+              isConfidential={project.data.isConfidential}
+              coverImage={project.data.coverImage}
+              coverAlt={project.data.coverAlt}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <CopyCodeEnhancer locale={locale} />
+</PublicLayout>

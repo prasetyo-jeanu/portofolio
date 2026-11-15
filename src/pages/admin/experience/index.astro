@@ -1,0 +1,83 @@
+---
+export const prerender = false;
+import { getSiteSettings } from '../../../lib/settings';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+import AdminRepeaterEditor from '../../../components/admin/AdminRepeaterEditor.astro';
+
+const settings = await getSiteSettings();
+---
+
+<AdminLayout title="Experience (06)" activeNav="experience">
+  <AdminStickyHeader
+    title="Sorotan Pengalaman / Experience Highlights (Seksi 06)"
+    subtitle="Kelola riwayat pengalaman & sorotan peran bilingual (ID & EN) yang tampil pada bagian 06 di beranda."
+    alertId="experience-alert"
+  >
+    <Fragment slot="actions">
+      <button id="experience-save-btn" type="button" class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+        Save Experience
+      </button>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <AdminRepeaterEditor
+    actionName="updateExperience"
+    idKey="experienceId"
+    enKey="experienceEn"
+    alertId="experience-alert"
+    saveBtnId="experience-save-btn"
+    itemsId={settings.experienceId.map((item) => ({ ...item }))}
+    itemsEn={settings.experienceEn.map((item) => ({ ...item }))}
+    sectionTitleId="Sorotan Pengalaman (ID)"
+    sectionTitleEn="Experience Highlights (EN)"
+    addLabelId="+ Tambah Pengalaman"
+    addLabelEn="+ Add Experience"
+    headerGridClass="grid gap-3 md:grid-cols-2"
+    fields={[
+      {
+        name: 'period',
+        label: 'Tahun / Periode',
+        type: 'text',
+        mono: true,
+        halfWidth: true,
+        placeholderId: 'Contoh: 2022 – Sekarang',
+        placeholderEn: 'e.g. 2022 – Present',
+      },
+      {
+        name: 'role',
+        label: 'Jabatan',
+        type: 'text',
+        halfWidth: true,
+        placeholderId: 'Contoh: Senior Fullstack Developer',
+        placeholderEn: 'e.g. Senior Fullstack Developer',
+      },
+      {
+        name: 'company',
+        label: 'Perusahaan',
+        type: 'text',
+        halfWidth: true,
+        required: false,
+        placeholderId: 'Contoh: PT Teknologi Nusantara (opsional)',
+        placeholderEn: 'e.g. Acme Corp (optional)',
+      },
+      {
+        name: 'logo',
+        label: 'Logo Perusahaan',
+        type: 'image',
+        halfWidth: true,
+        required: false,
+        placeholderId: 'URL logo (/uploads/...) atau Upload',
+        placeholderEn: 'Logo URL (/uploads/...) or Upload',
+      },
+      {
+        name: 'summary',
+        label: 'Kegiatan Utama',
+        type: 'textarea',
+        rows: 3,
+        placeholderId: 'Ringkasan tanggung jawab & kegiatan utama...',
+        placeholderEn: 'Key responsibilities & main activities...',
+      },
+    ]}
+  />
+</AdminLayout>

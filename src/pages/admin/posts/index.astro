@@ -1,0 +1,124 @@
+---
+export const prerender = false;
+import { desc, eq, isNull } from 'drizzle-orm';
+import { db } from '../../../db';
+import { posts, postTranslations } from '../../../db/schema';
+import { formatDate } from '../../../lib/i18n';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+
+const activePosts = await db
+  .select()
+  .from(posts)
+  .where(isNull(posts.deletedAt))
+  .orderBy(desc(posts.updatedAt));
+
+const translations = await db.select().from(postTranslations);
+const transMap = new Map<number, { id?: typeof translations[number]; en?: typeof translations[number] }>();
+for (const tr of translations) {
+  const entry = transMap.get(tr.postId) || {};
+  entry[tr.locale] = tr;
+  transMap.set(tr.postId, entry);
+}
+---
+
+<AdminLayout title="Blog Posts" activeNav="posts">
+  <AdminStickyHeader
+    title="Blog Posts"
+    subtitle="Manage multilingual technical articles (ID & EN)."
+  >
+    <Fragment slot="actions">
+      <a
+        href="/admin/posts/new"
+        class="inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90"
+      >
+        + New Article
+      </a>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <div class="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+    {activePosts.length > 0 ? (
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/60 text-xs uppercase text-[var(--text-muted)]">
+          <tr>
+            <th class="px-4 py-3">Title</th>
+            <th class="px-4 py-3">Indonesian (ID)</th>
+            <th class="px-4 py-3">English (EN)</th>
+            <th class="px-4 py-3">Updated</th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[var(--border-subtle)]">
+          {activePosts.map((post) => {
+            const tr = transMap.get(post.id) || {};
+            const displayTitle = tr.id?.title || tr.en?.title || `Post #${post.id}`;
+            return (
+              <tr class="hover:bg-[var(--bg-secondary)]/30">
+                <td class="px-4 py-3">
+                  <a href={`/admin/posts/${post.id}`} class="font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]">
+                    {displayTitle}
+                  </a>
+                  <p class="text-xs text-[var(--text-muted)] font-mono">{post.category}</p>
+                </td>
+                <td class="px-4 py-3">
+                  {tr.id ? (
+                    <span class:list={[
+                      'rounded-md px-2 py-0.5 text-xs font-medium',
+                      tr.id.status === 'published' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400',
+                    ]}>
+                      {tr.id.status}
+                    </span>
+                  ) : (
+                    <span class="text-xs text-red-400">missing</span>
+                  )}
+                </td>
+                <td class="px-4 py-3">
+                  {tr.en ? (
+                    <span class:list={[
+                      'rounded-md px-2 py-0.5 text-xs font-medium',
+                      tr.en.status === 'published' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400',
+                    ]}>
+                      {tr.en.status}
+                    </span>
+                  ) : (
+                    <span class="text-xs text-red-400">missing</span>
+                  )}
+                </td>
+                <td class="px-4 py-3 text-xs text-[var(--text-muted)]">{formatDate(post.updatedAt, 'en')}</td>
+                <td class="px-4 py-3 text-right space-x-2">
+                  <a href={`/admin/posts/${post.id}`} class="text-xs font-medium text-[var(--accent)] hover:underline">Edit</a>
+                  <button
+                    type="button"
+                    data-delete-post={post.id}
+                    class="text-xs font-medium text-red-400 hover:underline cursor-pointer"
+                  >
+                    Archive
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    ) : (
+      <div class="p-10 text-center text-sm text-[var(--text-muted)]">
+        No articles yet. <a href="/admin/posts/new" class="text-[var(--accent)] underline">Create your first article</a>.
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  document.querySelectorAll('[data-delete-post]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = Number((btn as HTMLElement).dataset.deletePost);
+      if (!confirm('Archive this post and unpublish all translations?')) return;
+      const { error } = await actions.deletePost({ id });
+      if (!error) window.location.reload();
+      else alert(error.message);
+    });
+  });
+</script>

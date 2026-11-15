@@ -1,0 +1,117 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  activeNav?: 'dashboard' | 'posts' | 'projects' | 'freelance' | 'expertise' | 'experience' | 'media' | 'redirects' | 'publish' | 'settings';
+}
+
+const { title, activeNav = 'dashboard' } = Astro.props;
+const user = Astro.locals.user;
+
+const navLinks = [
+  { id: 'dashboard', label: 'Dashboard', href: '/admin' },
+  { id: 'posts', label: 'Blog Posts', href: '/admin/posts' },
+  { id: 'projects', label: 'Projects', href: '/admin/projects' },
+  { id: 'freelance', label: 'Freelance', href: '/admin/freelance' },
+  { id: 'expertise', label: 'Expertise (05)', href: '/admin/expertise' },
+  { id: 'experience', label: 'Experience (06)', href: '/admin/experience' },
+  { id: 'media', label: 'Media Library', href: '/admin/media' },
+  { id: 'publish', label: 'Publish & Builds', href: '/admin/publish' },
+  { id: 'redirects', label: 'URL Redirects', href: '/admin/redirects' },
+  { id: 'settings', label: 'Site Settings', href: '/admin/settings' },
+];
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} | Admin CMS</title>
+  </head>
+  <body class="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <div class="flex min-h-screen flex-col lg:flex-row">
+      <!-- Sidebar -->
+      <aside class="w-full lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border-subtle)] bg-[var(--bg-secondary)]/60 p-4 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between lg:block mb-6">
+            <a href="/admin" class="flex items-center gap-2.5 font-bold text-base text-[var(--text-primary)]">
+              <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] border border-[var(--accent)]/40 font-mono text-xs text-[var(--accent)]">
+                CMS
+              </span>
+              <span>Portfolio Admin</span>
+            </a>
+            <a href="/id/" target="_blank" class="lg:hidden text-xs text-[var(--accent)] hover:underline">
+              View Site &nearr;
+            </a>
+          </div>
+
+          <nav aria-label="Admin navigation" class="flex lg:flex-col gap-1 overflow-x-auto pb-2 lg:pb-0">
+            {navLinks.map((link) => (
+              <a
+                href={link.href}
+                class:list={[
+                  'whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  activeNav === link.id
+                    ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]',
+                ]}
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+
+        <div class="hidden lg:block pt-6 mt-6 border-t border-[var(--border-subtle)] space-y-3">
+          {user && (
+            <div class="px-2">
+              <p class="text-xs font-semibold text-[var(--text-primary)] truncate">{user.name}</p>
+              <p class="text-[11px] text-[var(--text-muted)] truncate">{user.email}</p>
+            </div>
+          )}
+
+          <div class="flex flex-col gap-2">
+            <a
+              href="/id/"
+              target="_blank"
+              class="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-center text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)]"
+            >
+              Open Public Site &nearr;
+            </a>
+            <form method="POST" action="/_actions/logout" id="admin-logout-form">
+              <button
+                type="submit"
+                class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </form>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="flex-1 p-4 sm:p-8 min-w-0">
+        <div class="mx-auto max-w-6xl">
+          <slot />
+        </div>
+      </main>
+    </div>
+
+    <script>
+      import { actions } from 'astro:actions';
+
+      const logoutForm = document.getElementById('admin-logout-form');
+      if (logoutForm) {
+        logoutForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await actions.logout(new FormData(logoutForm as HTMLFormElement));
+          window.location.href = '/admin/login';
+        });
+      }
+    </script>
+  </body>
+</html>

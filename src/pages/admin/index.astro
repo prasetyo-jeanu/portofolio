@@ -1,0 +1,220 @@
+---
+export const prerender = false;
+import { desc, isNull } from 'drizzle-orm';
+import { db } from '../../db';
+import {
+  freelanceProjects,
+  posts,
+  postTranslations,
+  projects,
+  projectTranslations,
+  publishingJobs,
+} from '../../db/schema';
+import { formatDate } from '../../lib/i18n';
+import { canRollback } from '../../lib/publish';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const activePosts = await db.select().from(posts).where(isNull(posts.deletedAt));
+const allPostTrans = await db.select().from(postTranslations);
+const activeProjects = await db.select().from(projects).where(isNull(projects.deletedAt));
+const activeFreelance = await db.select().from(freelanceProjects).where(isNull(freelanceProjects.deletedAt));
+const allProjectTrans = await db.select().from(projectTranslations);
+const recentJobs = await db.select().from(publishingJobs).orderBy(desc(publishingJobs.startedAt)).limit(5);
+
+const activePostIds = new Set(activePosts.map((p) => p.id));
+const activeProjectIds = new Set(activeProjects.map((p) => p.id));
+
+const publishedPostsCount = allPostTrans.filter((t) => activePostIds.has(t.postId) && t.status === 'published').length;
+const draftPostsCount = allPostTrans.filter((t) => activePostIds.has(t.postId) && t.status === 'draft').length;
+
+// Missing translations across active posts & projects
+let missingTranslationsCount = 0;
+for (const p of activePosts) {
+  const locales = new Set(allPostTrans.filter((t) => t.postId === p.id).map((t) => t.locale));
+  if (!locales.has('id') || !locales.has('en')) missingTranslationsCount += 1;
+}
+for (const pr of activeProjects) {
+  const locales = new Set(allProjectTrans.filter((t) => t.projectId === pr.id).map((t) => t.locale));
+  if (!locales.has('id') || !locales.has('en')) missingTranslationsCount += 1;
+}
+
+const latestJob = recentJobs[0] || null;
+const failedJobs = recentJobs.filter((j) => j.status === 'failed');
+const rollbackAvailable = canRollback();
+
+const recentPostUpdates = allPostTrans
+  .filter((t) => activePostIds.has(t.postId))
+  .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+  .slice(0, 5);
+---
+
+<AdminLayout title="Dashboard" activeNav="dashboard">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">Dashboard</h1>
+      <p class="mt-1 text-sm text-[var(--text-muted)]">Overview of content, translations, and static site publishing.</p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2.5">
+      <button
+        type="button"
+        id="dashboard-publish-btn"
+        class="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer"
+      >
+        Publish Static Site
+      </button>
+      {rollbackAvailable && (
+        <button
+          type="button"
+          id="dashboard-rollback-btn"
+          class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-amber-400 cursor-pointer"
+        >
+          Rollback
+        </button>
+      )}
+    </div>
+  </div>
+
+  <div id="dashboard-publish-alert" class="hidden mb-6 rounded-xl px-4 py-3 text-sm"></div>
+
+  <!-- Stats grid -->
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-8">
+    <div class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+      <p class="text-xs font-medium text-[var(--text-muted)]">Published Post Variants</p>
+      <p class="mt-2 text-3xl font-bold text-[var(--text-primary)]">{publishedPostsCount}</p>
+    </div>
+    <div class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+      <p class="text-xs font-medium text-[var(--text-muted)]">Draft Post Variants</p>
+      <p class="mt-2 text-3xl font-bold text-[var(--text-primary)]">{draftPostsCount}</p>
+    </div>
+    <div class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+      <p class="text-xs font-medium text-[var(--text-muted)]">Total Projects</p>
+      <p class="mt-2 text-3xl font-bold text-[var(--text-primary)]">{activeProjects.length}</p>
+    </div>
+    <a href="/admin/freelance" class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 hover:border-[var(--accent)]/60 transition-colors">
+      <p class="text-xs font-medium text-[var(--text-muted)]">Freelance Projects</p>
+      <p class="mt-2 text-3xl font-bold text-[var(--accent)]">{activeFreelance.length}</p>
+    </a>
+    <div class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+      <p class="text-xs font-medium text-[var(--text-muted)]">Missing Translations</p>
+      <p class="mt-2 text-3xl font-bold text-amber-400">{missingTranslationsCount}</p>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <!-- Publishing Status -->
+    <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-[var(--text-primary)]">Publishing Status</h2>
+        <a href="/admin/publish" class="text-xs text-[var(--accent)] hover:underline">View history &rarr;</a>
+      </div>
+
+      {latestJob ? (
+        <div class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs text-[var(--text-muted)]">Job #{latestJob.id}</span>
+            <span
+              class:list={[
+                'rounded-md px-2 py-0.5 text-xs font-semibold uppercase',
+                latestJob.status === 'success' && 'bg-emerald-500/15 text-emerald-400',
+                latestJob.status === 'running' && 'bg-blue-500/15 text-blue-400',
+                latestJob.status === 'failed' && 'bg-red-500/15 text-red-400',
+                latestJob.status === 'rolled_back' && 'bg-amber-500/15 text-amber-400',
+              ]}
+            >
+              {latestJob.status}
+            </span>
+          </div>
+          <p class="mt-2 text-sm text-[var(--text-secondary)]">{latestJob.summary || latestJob.errorMessage || 'In progress...'}</p>
+          <p class="mt-1 text-xs text-[var(--text-muted)]">{formatDate(latestJob.startedAt, 'en')}</p>
+        </div>
+      ) : (
+        <p class="text-sm text-[var(--text-muted)]">No publishing jobs executed yet.</p>
+      )}
+
+      {failedJobs.length > 0 && (
+        <div class="mt-4">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-red-400 mb-2">Recent Failures</h3>
+          <ul class="space-y-2 text-xs">
+            {failedJobs.map((job) => (
+              <li class="rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-red-300">
+                #{job.id}: {job.errorMessage}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+
+    <!-- Recently Updated Posts -->
+    <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-[var(--text-primary)]">Recently Updated Articles</h2>
+        <a href="/admin/posts/new" class="text-xs text-[var(--accent)] hover:underline">+ New Article</a>
+      </div>
+
+      {recentPostUpdates.length > 0 ? (
+        <ul class="divide-y divide-[var(--border-subtle)]">
+          {recentPostUpdates.map((item) => (
+            <li class="py-3 flex items-center justify-between gap-4">
+              <div class="min-w-0">
+                <a href={`/admin/posts/${item.postId}`} class="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] truncate block">
+                  {item.title}
+                </a>
+                <p class="text-xs text-[var(--text-muted)]">
+                  [{item.locale.toUpperCase()}] &middot; {item.status}
+                </p>
+              </div>
+              <span class="text-xs text-[var(--text-muted)] whitespace-nowrap">{formatDate(item.updatedAt, 'en')}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="text-sm text-[var(--text-muted)]">No articles created yet.</p>
+      )}
+    </section>
+  </div>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const pubBtn = document.getElementById('dashboard-publish-btn');
+  const rbBtn = document.getElementById('dashboard-rollback-btn');
+  const alertBox = document.getElementById('dashboard-publish-alert');
+
+  function showAlert(msg: string, isErr: boolean) {
+    if (!alertBox) return;
+    alertBox.textContent = msg;
+    alertBox.className = isErr
+      ? 'mb-6 rounded-xl px-4 py-3 text-sm bg-red-500/15 text-red-400'
+      : 'mb-6 rounded-xl px-4 py-3 text-sm bg-emerald-500/15 text-emerald-400';
+  }
+
+  if (pubBtn) {
+    pubBtn.addEventListener('click', async () => {
+      pubBtn.setAttribute('disabled', 'true');
+      pubBtn.textContent = 'Building & Indexing...';
+      const { data, error } = await actions.triggerPublish();
+      pubBtn.removeAttribute('disabled');
+      pubBtn.textContent = 'Publish Static Site';
+      if (error) {
+        showAlert(error.message || 'Publish failed', true);
+      } else {
+        showAlert(data?.summary || 'Site published successfully!', false);
+      }
+    });
+  }
+
+  if (rbBtn) {
+    rbBtn.addEventListener('click', async () => {
+      if (!confirm('Roll back public website to previous snapshot?')) return;
+      const { data, error } = await actions.triggerRollback();
+      if (error) {
+        showAlert(error.message || 'Rollback failed', true);
+      } else {
+        showAlert(data?.message || 'Rolled back successfully.', false);
+      }
+    });
+  }
+</script>

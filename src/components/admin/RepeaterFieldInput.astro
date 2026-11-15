@@ -1,0 +1,77 @@
+---
+export interface RepeaterFieldDef {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'image';
+  required?: boolean;
+  mono?: boolean;
+  rows?: number;
+  halfWidth?: boolean;
+  placeholderId: string;
+  placeholderEn: string;
+}
+
+interface Props {
+  field: RepeaterFieldDef;
+  locale: 'id' | 'en';
+  value?: string;
+}
+
+const { field, locale, value = '' } = Astro.props;
+const ph = locale === 'id' ? field.placeholderId : field.placeholderEn;
+const inputCls = `w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-sm${field.mono ? ' font-mono' : ''}`;
+const hasVal = value.trim().length > 0;
+---
+
+<div class={field.halfWidth ? '' : 'col-span-full'}>
+  <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{field.label}</label>
+  {field.type === 'textarea' ? (
+    <textarea rows={field.rows ?? 2} data-field={field.name} placeholder={ph} class={inputCls}>{value}</textarea>
+  ) : field.type === 'image' ? (
+    <div data-image-field class="flex items-center gap-2">
+      <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1">
+        <img
+          data-image-preview
+          src={hasVal ? value : ''}
+          alt=""
+          class:list={['h-full w-full object-contain', !hasVal && 'hidden']}
+        />
+        <span
+          data-image-placeholder
+          class:list={['font-mono text-[10px] text-[var(--text-muted)]', hasVal && 'hidden']}
+        >
+          IMG
+        </span>
+      </div>
+      <input
+        type="text"
+        data-field={field.name}
+        value={value}
+        placeholder={ph}
+        class="min-w-0 flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 font-mono text-xs"
+      />
+      <label class="shrink-0 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] cursor-pointer">
+        <span data-image-upload-label>Upload</span>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+          data-image-upload
+          class="hidden"
+        />
+      </label>
+      <button
+        type="button"
+        data-image-clear
+        title="Clear image"
+        class:list={[
+          'shrink-0 rounded-lg border border-red-500/30 px-2 py-2 text-xs text-red-400 hover:bg-red-500/10 cursor-pointer',
+          !hasVal && 'hidden',
+        ]}
+      >
+        &times;
+      </button>
+    </div>
+  ) : (
+    <input type="text" data-field={field.name} value={value} placeholder={ph} class={inputCls} />
+  )}
+</div>

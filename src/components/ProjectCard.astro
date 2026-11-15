@@ -1,0 +1,144 @@
+---
+import type { Locale } from '../db/schema';
+import { getProjectUrl, getTranslations } from '../lib/i18n';
+
+export interface Props {
+  locale: Locale;
+  title: string;
+  slug: string;
+  role?: string;
+  summary: string;
+  category: string;
+  tags: string[];
+  featured?: boolean;
+  isConfidential?: boolean;
+  coverImage?: string | null;
+  coverAlt?: string;
+  collapsedByDefault?: boolean;
+}
+
+const {
+  locale,
+  title,
+  slug,
+  role,
+  summary,
+  category,
+  tags,
+  featured = false,
+  isConfidential = false,
+  coverImage,
+  coverAlt,
+  collapsedByDefault = false,
+} = Astro.props;
+
+const t = getTranslations(locale);
+const viewLabel = locale === 'id' ? 'Lihat studi kasus' : 'View case study';
+const openPreviewLabel = locale === 'id' ? `Buka studi kasus: ${title}` : `Open case study: ${title}`;
+const projectDetailUrl = getProjectUrl(locale, slug);
+---
+
+<article
+  class:list={[
+    'project-card group flex min-w-0 cursor-pointer flex-col justify-between rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 text-[var(--text-primary)] transition-colors duration-200 hover:border-[var(--accent)]',
+    collapsedByDefault && 'hidden',
+  ]}
+  data-project-card
+  data-project-slug={slug}
+  data-project-overflow={collapsedByDefault ? 'true' : undefined}
+  data-tags={tags.join(',').toLowerCase()}
+  data-category={category.toLowerCase()}
+>
+  {coverImage && (
+    <div class="project-card-media mb-4">
+      <a
+        href={projectDetailUrl}
+        data-open-project={slug}
+        aria-label={openPreviewLabel}
+        tabindex="-1"
+        class="project-card-thumb block aspect-[16/10] w-full cursor-pointer overflow-hidden rounded border border-[var(--border-ledger)] bg-[#222831] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+      >
+        <img
+          src={coverImage}
+          alt={coverAlt || title}
+          width="640"
+          height="640"
+          loading="lazy"
+          decoding="async"
+          class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+        />
+      </a>
+    </div>
+  )}
+
+  <div class="project-card-body flex flex-1 flex-col justify-between">
+    <div class="project-card-copy">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-ledger)] pb-2.5">
+        <span class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--accent)]">
+          {category}
+        </span>
+        <div class="flex items-center gap-1.5">
+          {featured && (
+            <span class="rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+              {t.projects.featuredBadge}
+            </span>
+          )}
+          {isConfidential && (
+            <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-secondary)]">
+              {t.projects.confidentialBadge}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <h3 class="font-display text-lg font-bold tracking-[-0.015em] text-[var(--text-primary)]">
+        <a
+          href={projectDetailUrl}
+          data-open-project={slug}
+          class="cursor-pointer text-left transition-colors hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        >
+          {title}
+        </a>
+      </h3>
+
+      {role && (
+        <p class="mt-1 font-mono text-xs text-[var(--text-muted)]">
+          {role}
+        </p>
+      )}
+
+      <p class="project-card-summary mt-2.5 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+        {summary}
+      </p>
+    </div>
+
+    <div class="project-card-footer mt-5 border-t border-[var(--border-ledger)] pt-3">
+      {tags.length > 0 && (
+        <div class="project-card-tags mb-4 flex flex-wrap gap-1.5">
+          {tags.slice(0, 3).map((tag) => (
+            <span class="rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)]">
+              {tag}
+            </span>
+          ))}
+          {tags.length > 3 && (
+            <span class="monograph-num rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-muted)]">
+              +{tags.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+
+      <a
+        href={projectDetailUrl}
+        data-open-project={slug}
+        class="project-card-cta inline-flex min-h-[36px] cursor-pointer items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--accent)] transition-colors hover:text-[var(--text-primary)]"
+      >
+        <span>{viewLabel}</span>
+        <svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+      </a>
+    </div>
+  </div>
+</article>

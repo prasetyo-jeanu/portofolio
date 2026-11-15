@@ -1,0 +1,71 @@
+{
+  "id": "b2b-hotel-platform",
+  "project_name": "Integrasi API B2B Hotel",
+  "category": "b2b-platform",
+  "featured": true,
+  "sort_order": 3,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "Lumen",
+    "Node.js",
+    "Express",
+    "MySQL",
+    "MongoDB",
+    "Kafka",
+    "WSO2 ESB"
+  ],
+  "image": {
+    "file": "b2b-hotel-platform.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric hotel distribution dashboard connecting global hotel suppliers to client booking interfaces in charcoal and gold.",
+      "id": "Ilustrasi isometrik platform distribusi hotel B2B yang menghubungkan pemasok hotel global ke antarmuka pemesanan klien."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "B2B Hotel Platform for 20,000 Properties",
+      "slug": "b2b-hotel-platform",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Built a CMS for 20,000 hotels and unified third-party vendor APIs through an internal gateway decoupled with Kafka.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Built a CMS for 20,000 domestic and international hotels and connected vendor APIs to clients through an internal gateway using PHP Lumen, Slim, and Node.js."
+        },
+        {
+          "label": "My Approach",
+          "text": "Standardized inconsistent vendor data and decoupled catalog updates with Kafka, accepting eventual consistency to prevent slow vendor responses from blocking internal workflows."
+        },
+        {
+          "label": "Impact",
+          "text": "Centralized hotel management, simplified client integrations, and reduced duplicated integration logic by making vendor connections reusable across clients."
+        }
+      ]
+    },
+    "id": {
+      "title": "Platform Hotel B2B untuk 20.000 Properti",
+      "slug": "b2b-hotel-platform",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Membangun CMS untuk mengelola 20.000 hotel serta menyatukan berbagai API dari vendor pihak ketiga melalui gateway internal yang terpisah menggunakan Kafka.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Membangun CMS untuk mengelola 20.000 hotel, baik domestik maupun internasional. Saya juga mengintegrasikan API dari berbagai vendor agar dapat diakses oleh klien melalui gateway internal menggunakan PHP Lumen, Slim, dan Node.js."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Menstandarkan format data dari berbagai vendor yang memiliki struktur berbeda-beda dan memisahkan proses pembaruan katalog menggunakan Kafka. Dengan pendekatan ini, sistem tetap dapat menjalankan proses internal tanpa harus menunggu respons vendor yang lambat, meskipun konsekuensinya pembaruan data tidak selalu terjadi secara langsung (*eventual consistency*)."
+        },
+        {
+          "label": "Dampak",
+          "text": "Pengelolaan hotel menjadi lebih terpusat dan integrasi dengan klien menjadi lebih sederhana. Logika integrasi yang sebelumnya berulang juga dapat dikurangi karena koneksi ke vendor bisa digunakan kembali oleh berbagai klien."
+        }
+      ]
+    }
+  }
+}

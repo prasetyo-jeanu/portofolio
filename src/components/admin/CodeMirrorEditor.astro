@@ -1,0 +1,122 @@
+---
+interface Props {
+  editorId: string;
+  initialValue?: string;
+}
+
+const { editorId, initialValue = '' } = Astro.props;
+---
+
+<div class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] overflow-hidden" data-cm-wrapper={editorId}>
+  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/70 px-3 py-2 text-xs">
+    <div class="flex flex-wrap items-center gap-1.5">
+      <button type="button" data-cm-cmd="bold" class="rounded px-2 py-1 hover:bg-[var(--bg-elevated)] font-bold cursor-pointer">B</button>
+      <button type="button" data-cm-cmd="italic" class="rounded px-2 py-1 hover:bg-[var(--bg-elevated)] italic cursor-pointer">I</button>
+      <button type="button" data-cm-cmd="h2" class="rounded px-2 py-1 hover:bg-[var(--bg-elevated)] font-mono cursor-pointer">H2</button>
+      <button type="button" data-cm-cmd="code" class="rounded px-2 py-1 hover:bg-[var(--bg-elevated)] font-mono cursor-pointer">Code</button>
+      <button type="button" data-cm-cmd="callout" class="rounded px-2 py-1 hover:bg-[var(--bg-elevated)] font-mono cursor-pointer">+ Callout</button>
+      <button type="button" data-cm-cmd="figure" class="rounded px-2 py-1 hover:bg-[var(--bg-elevated)] font-mono cursor-pointer">+ Figure</button>
+    </div>
+    <span class="text-[11px] text-[var(--text-muted)]" data-cm-dirty={editorId}>Saved</span>
+  </div>
+
+  <div id={editorId} class="min-h-[380px] text-sm"></div>
+  <textarea id={`${editorId}-fallback`} class="hidden">{initialValue}</textarea>
+</div>
+
+<script>
+  import { EditorView, basicSetup } from 'codemirror';
+  import { EditorState } from '@codemirror/state';
+  import { markdown } from '@codemirror/lang-markdown';
+  import { oneDark } from '@codemirror/theme-one-dark';
+  import { indentWithTab } from '@codemirror/commands';
+  import { keymap } from '@codemirror/view';
+
+  declare global {
+    interface Window {
+      __cmEditors?: Record<string, {
+        getValue: () => string;
+        setValue: (val: string) => void;
+        insertSnippet: (snippet: string) => void;
+        markClean: () => void;
+      }>;
+    }
+  }
+
+  window.__cmEditors = window.__cmEditors || {};
+
+  document.querySelectorAll('[data-cm-wrapper]').forEach((wrapper) => {
+    const editorId = (wrapper as HTMLElement).dataset.cmWrapper!;
+    const host = document.getElementById(editorId);
+    const fallback = document.getElementById(`${editorId}-fallback`) as HTMLTextAreaElement | null;
+    const dirtyLabel = document.querySelector(`[data-cm-dirty="${editorId}"]`);
+    if (!host || !fallback || host.dataset.mounted === 'true') return;
+    host.dataset.mounted = 'true';
+
+    const initialDoc = fallback.value || '';
+
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: initialDoc,
+        extensions: [
+          basicSetup,
+          keymap.of([indentWithTab]),
+          markdown(),
+          oneDark,
+          EditorView.lineWrapping,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              fallback.value = update.state.doc.toString();
+              if (dirtyLabel) {
+                dirtyLabel.textContent = 'Unsaved changes';
+                dirtyLabel.className = 'text-[11px] text-amber-400 font-medium';
+              }
+              window.dispatchEvent(new CustomEvent('cm-change', { detail: { editorId } }));
+            }
+          }),
+        ],
+      }),
+      parent: host,
+    });
+
+    const insertText = (snippet: string) => {
+      const sel = view.state.selection.main;
+      view.dispatch({
+        changes: { from: sel.from, to: sel.to, insert: snippet },
+        selection: { anchor: sel.from + snippet.length },
+      });
+      view.focus();
+    };
+
+    wrapper.querySelectorAll('[data-cm-cmd]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cmd = (btn as HTMLElement).dataset.cmCmd;
+        const sel = view.state.selection.main;
+        const selected = view.state.sliceDoc(sel.from, sel.to);
+        if (cmd === 'bold') insertText(`**${selected || 'bold text'}**`);
+        else if (cmd === 'italic') insertText(`*${selected || 'italic text'}*`);
+        else if (cmd === 'h2') insertText(`\n## ${selected || 'Section Heading'}\n`);
+        else if (cmd === 'code') insertText(`\n\`\`\`ts\n${selected || '// code here'}\n\`\`\`\n`);
+        else if (cmd === 'callout') insertText(`\n<Callout type="info" title="Note">\n${selected || 'Callout details here.'}\n</Callout>\n`);
+        else if (cmd === 'figure') insertText(`\n<Figure src="/uploads/example.png" alt="Diagram description" caption="Figure caption" />\n`);
+      });
+    });
+
+    window.__cmEditors![editorId] = {
+      getValue: () => view.state.doc.toString(),
+      setValue: (val: string) => {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: val },
+        });
+        fallback.value = val;
+      },
+      insertSnippet: insertText,
+      markClean: () => {
+        if (dirtyLabel) {
+          dirtyLabel.textContent = 'Saved';
+          dirtyLabel.className = 'text-[11px] text-emerald-400';
+        }
+      },
+    };
+  });
+</script>

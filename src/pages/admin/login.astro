@@ -1,0 +1,90 @@
+---
+export const prerender = false;
+import '../../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin Login | Portfolio CMS</title>
+  </head>
+  <body class="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] px-4">
+    <div class="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-8 shadow-xl">
+      <div class="mb-6 text-center">
+        <span class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] font-mono text-sm font-bold text-[var(--accent)]">
+          CMS
+        </span>
+        <h1 class="mt-4 text-2xl font-bold text-[var(--text-primary)]">Admin Sign In</h1>
+        <p class="mt-1 text-sm text-[var(--text-muted)]">Manage bilingual projects, technical articles, and publishing.</p>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label for="email" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autocomplete="email"
+            class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)]"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autocomplete="current-password"
+            class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)]"
+          />
+        </div>
+
+        <div id="login-error" class="hidden rounded-xl bg-red-500/15 px-3.5 py-2.5 text-sm text-red-400" role="alert"></div>
+
+        <button
+          type="submit"
+          id="login-btn"
+          class="w-full rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black hover:opacity-90 cursor-pointer"
+        >
+          Sign In
+        </button>
+      </form>
+    </div>
+
+    <script>
+      import { actions } from 'astro:actions';
+
+      const form = document.getElementById('login-form') as HTMLFormElement | null;
+      const errBox = document.getElementById('login-error');
+      const btn = document.getElementById('login-btn');
+
+      if (form && errBox && btn) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          errBox.classList.add('hidden');
+          btn.setAttribute('disabled', 'true');
+          btn.textContent = 'Signing in...';
+
+          const formData = new FormData(form);
+          const { error } = await actions.login(formData);
+
+          if (error) {
+            errBox.textContent = error.message || 'Authentication failed.';
+            errBox.classList.remove('hidden');
+            btn.removeAttribute('disabled');
+            btn.textContent = 'Sign In';
+          } else {
+            window.location.href = '/admin';
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

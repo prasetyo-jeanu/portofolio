@@ -1,0 +1,70 @@
+{
+  "id": "whatsapp-customer-service",
+  "project_name": "WhatsApp Customer Service Chatbot and Conversation Dashboard",
+  "category": "ai-automation",
+  "featured": true,
+  "sort_order": 5,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "TypeScript",
+    "LangChain",
+    "PostgreSQL",
+    "pgvector",
+    "Supabase",
+    "Qdrant",
+    "Docker"
+  ],
+  "image": {
+    "file": "whatsapp-customer-service.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric customer service chatbot dashboard connecting messaging, scheduled follow-ups, human agents, and conversation oversight in charcoal and gold.",
+      "id": "Ilustrasi isometrik dasbor chatbot layanan pelanggan WhatsApp yang menghubungkan pesan, tindak lanjut terjadwal, agen CS, dan riwayat percakapan."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Automating WhatsApp Support and Follow-Ups",
+      "slug": "whatsapp-customer-service",
+      "role": "Full Stack Developer (Solo Builder)",
+      "summary": "Built a WhatsApp support chatbot and shared agent dashboard with LangChain, pgvector/Qdrant retrieval, and scheduled follow-ups.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Built a WhatsApp support chatbot and conversation dashboard independently with LangChain, TypeScript, and Supabase, combining automated follow-ups with agent-level message visibility."
+        },
+        {
+          "label": "My Approach",
+          "text": "Separated follow-up scheduling from AI replies, used vector search to ground answers, and routed uncertain requests to agents for more reliable customer support."
+        },
+        {
+          "label": "Impact",
+          "text": "Made pending requests easier to track and gave the CEO searchable conversation histories across CS agents, reducing reliance on manual follow-up checks."
+        }
+      ]
+    },
+    "id": {
+      "title": "Otomatisasi Layanan Pelanggan dan Tindak Lanjut melalui WhatsApp",
+      "slug": "whatsapp-customer-service",
+      "role": "Full Stack Developer (Dikembangkan Secara Mandiri)",
+      "summary": "Membangun chatbot layanan pelanggan WhatsApp dan dashboard bersama untuk tim CS menggunakan LangChain, pencarian berbasis vektor dengan pgvector/Qdrant, serta fitur tindak lanjut otomatis terjadwal.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Membangun chatbot layanan pelanggan WhatsApp dan dashboard pengelolaan percakapan secara mandiri menggunakan LangChain, TypeScript, dan Supabase. Sistem ini menggabungkan fitur tindak lanjut otomatis dengan akses riwayat percakapan yang dapat dipantau oleh setiap agen CS."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Memisahkan penjadwalan tindak lanjut dari proses balasan AI, menggunakan pencarian vektor agar jawaban chatbot didasarkan pada informasi yang relevan, serta meneruskan pertanyaan yang belum dapat dijawab dengan yakin kepada agen CS. Pendekatan ini membantu meningkatkan keandalan layanan pelanggan."
+        },
+        {
+          "label": "Dampak",
+          "text": "Permintaan pelanggan yang belum selesai menjadi lebih mudah dipantau. CEO juga dapat mencari dan melihat riwayat percakapan seluruh agen CS dalam satu tempat, sehingga perusahaan tidak lagi terlalu bergantung pada pemeriksaan tindak lanjut secara manual."
+        }
+      ]
+    }
+  }
+}

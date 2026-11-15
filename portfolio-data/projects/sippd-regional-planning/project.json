@@ -1,0 +1,67 @@
+{
+  "id": "sippd-regional-planning",
+  "project_name": "SIPPD — Regional Development Planning Information System",
+  "category": "govtech",
+  "featured": false,
+  "sort_order": 10,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "MySQL",
+    "Bootstrap",
+    "jQuery"
+  ],
+  "image": {
+    "file": "sippd-regional-planning.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric regional development planning platform linking government offices, project proposals, departmental reviews, and regional deployments in charcoal and gold.",
+      "id": "Ilustrasi isometrik sistem perencanaan pembangunan daerah yang menghubungkan instansi pemerintah, usulan proyek, tinjauan dinas, dan implementasi provinsi."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Delivering Regional Planning Software Across Three Provinces",
+      "slug": "sippd-regional-planning",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Developed configurable regional planning and audit-trail software rolled out across Central Java, South Sumatra, and Maluku.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Developed SIPPD with native PHP, MySQL, Bootstrap, and jQuery, connecting development proposals, departmental reviews, and consolidated regional planning reports."
+        },
+        {
+          "label": "My Approach",
+          "text": "Standardized planning records while keeping approval steps configurable, balancing consistent reporting with each region’s workflows and preserving an audit trail of changes."
+        },
+        {
+          "label": "Impact",
+          "text": "Delivered regional rollouts in Central Java, South Sumatra, and Maluku, combining implementation with user training and stakeholder presentations."
+        }
+      ]
+    },
+    "id": {
+      "title": "Mengembangkan Software Perencanaan Daerah di Tiga Provinsi",
+      "slug": "sippd-regional-planning",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Mengembangkan software perencanaan daerah yang dapat dikonfigurasi sesuai kebutuhan wilayah, dilengkapi dengan riwayat perubahan (*audit trail*), dan diterapkan di Jawa Tengah, Sumatera Selatan, serta Maluku.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Mengembangkan SIPPD menggunakan native PHP, MySQL, Bootstrap, dan jQuery. Sistem ini menghubungkan proses pengajuan usulan pembangunan, peninjauan oleh perangkat daerah, hingga penyusunan laporan perencanaan daerah secara terpadu."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Menstandarkan pencatatan data perencanaan sambil tetap menyediakan tahapan persetujuan yang dapat dikonfigurasi. Pendekatan ini menjaga konsistensi laporan tanpa mengabaikan alur kerja masing-masing daerah, sekaligus memastikan setiap perubahan memiliki riwayat yang dapat ditelusuri."
+        },
+        {
+          "label": "Dampak",
+          "text": "Berhasil menerapkan sistem di Jawa Tengah, Sumatera Selatan, dan Maluku. Pekerjaan ini mencakup proses implementasi, pelatihan pengguna, serta presentasi kepada para pemangku kepentingan."
+        }
+      ]
+    }
+  }
+}

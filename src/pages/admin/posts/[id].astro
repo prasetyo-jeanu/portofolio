@@ -1,0 +1,354 @@
+---
+export const prerender = false;
+import { desc, eq } from 'drizzle-orm';
+import { db } from '../../../db';
+import { media, posts, postTags, postTranslations, tags } from '../../../db/schema';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+import CodeMirrorEditor from '../../../components/admin/CodeMirrorEditor.astro';
+
+const rawId = Astro.params.id;
+const isNew = rawId === 'new';
+const postId = isNew ? null : Number(rawId);
+
+if (!isNew && (!postId || Number.isNaN(postId))) {
+  return Astro.redirect('/admin/posts');
+}
+
+let postRow: typeof posts.$inferSelect | null = null;
+let idTrans: typeof postTranslations.$inferSelect | null = null;
+let enTrans: typeof postTranslations.$inferSelect | null = null;
+let tagNames: string[] = [];
+
+if (postId) {
+  const found = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (found.length === 0) return Astro.redirect('/admin/posts');
+  postRow = found[0];
+
+  const transRows = await db.select().from(postTranslations).where(eq(postTranslations.postId, postId));
+  idTrans = transRows.find((t) => t.locale === 'id') || null;
+  enTrans = transRows.find((t) => t.locale === 'en') || null;
+
+  const tagRows = await db
+    .select({ name: tags.name })
+    .from(postTags)
+    .innerJoin(tags, eq(postTags.tagId, tags.id))
+    .where(eq(postTags.postId, postId));
+  tagNames = tagRows.map((r) => r.name);
+}
+
+const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(50);
+---
+
+<AdminLayout title={isNew ? 'New Article' : `Edit Article #${postId}`} activeNav="posts">
+  <AdminStickyHeader
+    title={isNew ? 'Create Blog Article' : `Edit Article #${postId}`}
+    backHref="/admin/posts"
+    backLabel="Back to Articles"
+    alertId="post-alert"
+  >
+    <Fragment slot="actions">
+      <button
+        type="button"
+        id="post-preview-btn"
+        class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--accent)] cursor-pointer"
+      >
+        Preview MDX
+      </button>
+      <button
+        type="button"
+        id="post-save-btn"
+        class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer"
+      >
+        Save Article
+      </button>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <form id="post-form" data-post-id={postId ?? ''} class="space-y-6">
+    <!-- Shared Metadata -->
+    <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)] mb-4">Shared Article Settings</h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label for="post-category" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Category</label>
+          <input
+            id="post-category"
+            type="text"
+            value={postRow?.category || 'engineering'}
+            class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label for="post-tags" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tags (comma separated)</label>
+          <input
+            id="post-tags"
+            type="text"
+            value={tagNames.join(', ')}
+            placeholder="astro, sqlite, typescript"
+            class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label for="post-cover" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Cover Image</label>
+          <select id="post-cover" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
+            <option value="">No cover image</option>
+            {mediaList.map((m) => (
+              <option value={m.id} selected={postRow?.coverMediaId === m.id}>{m.filename}</option>
+            ))}
+          </select>
+        </div>
+        <div class="flex items-end pb-2">
+          <label class="inline-flex items-center gap-2 text-sm font-medium text-[var(--text-primary)] cursor-pointer">
+            <input id="post-featured" type="checkbox" checked={postRow?.featured || false} class="h-4 w-4 rounded accent-[var(--accent)]" />
+            Featured Article
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Language Tabs -->
+    <div class="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
+      <button type="button" data-locale-tab="id" class="rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer">
+        Indonesian (ID)
+      </button>
+      <button type="button" data-locale-tab="en" class="rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer">
+        English (EN)
+      </button>
+    </div>
+
+    <!-- ID Pane -->
+    <section data-locale-pane="id" class="space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Title (ID)</label>
+          <input id="id-title" type="text" value={idTrans?.title || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Status (ID)</label>
+          <select id="id-status" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">
+            <option value="draft" selected={!idTrans || idTrans.status === 'draft'}>Draft</option>
+            <option value="published" selected={idTrans?.status === 'published'}>Published</option>
+            <option value="archived" selected={idTrans?.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Slug (ID)</label>
+          <input id="id-slug" type="text" value={idTrans?.slug || ''} placeholder="auto-generated-from-title" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Title (ID, optional)</label>
+          <input id="id-seo-title" type="text" value={idTrans?.seoTitle || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Summary (ID)</label>
+          <textarea id="id-summary" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.summary || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Meta Description (ID, optional)</label>
+          <textarea id="id-seo-desc" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.seoDescription || ''}</textarea>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs font-medium text-[var(--text-secondary)]">MDX Content (ID) — Safe subset (Markdown + Callout/Figure)</label>
+          {mediaList.length > 0 && (
+            <select data-insert-media="cm-post-id" class="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1 text-xs">
+              <option value="">Insert uploaded image...</option>
+              {mediaList.map((m) => (
+                <option value={m.publicUrl}>{m.filename}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        <CodeMirrorEditor editorId="cm-post-id" initialValue={idTrans?.contentMdx || ''} />
+      </div>
+    </section>
+
+    <!-- EN Pane -->
+    <section data-locale-pane="en" class="hidden space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Title (EN)</label>
+          <input id="en-title" type="text" value={enTrans?.title || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Status (EN)</label>
+          <select id="en-status" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">
+            <option value="draft" selected={!enTrans || enTrans.status === 'draft'}>Draft</option>
+            <option value="published" selected={enTrans?.status === 'published'}>Published</option>
+            <option value="archived" selected={enTrans?.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Slug (EN)</label>
+          <input id="en-slug" type="text" value={enTrans?.slug || ''} placeholder="auto-generated-from-title" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Title (EN, optional)</label>
+          <input id="en-seo-title" type="text" value={enTrans?.seoTitle || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Summary (EN)</label>
+          <textarea id="en-summary" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.summary || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Meta Description (EN, optional)</label>
+          <textarea id="en-seo-desc" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.seoDescription || ''}</textarea>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs font-medium text-[var(--text-secondary)]">MDX Content (EN) — Safe subset (Markdown + Callout/Figure)</label>
+          {mediaList.length > 0 && (
+            <select data-insert-media="cm-post-en" class="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1 text-xs">
+              <option value="">Insert uploaded image...</option>
+              {mediaList.map((m) => (
+                <option value={m.publicUrl}>{m.filename}</option>
+              ))}
+            </select>
+          )}
+        </div>
+        <CodeMirrorEditor editorId="cm-post-en" initialValue={enTrans?.contentMdx || ''} />
+      </div>
+    </section>
+  </form>
+
+  <!-- Safe Preview Modal / Panel -->
+  <section id="post-preview-panel" class="hidden mt-8 rounded-2xl border border-[var(--accent)]/40 bg-[var(--bg-elevated)] p-6">
+    <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--accent)]">Safe MDX Preview</h2>
+      <button type="button" id="close-preview-btn" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">Close</button>
+    </div>
+    <div id="post-preview-content" class="prose-tech"></div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  let activeLocale: 'id' | 'en' = 'id';
+  const tabs = document.querySelectorAll('[data-locale-tab]');
+  const panes = document.querySelectorAll('[data-locale-pane]');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const loc = (tab as HTMLElement).dataset.localeTab as 'id' | 'en';
+      activeLocale = loc;
+      tabs.forEach((t) => {
+        const isCurrent = (t as HTMLElement).dataset.localeTab === loc;
+        t.className = isCurrent
+          ? 'rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer'
+          : 'rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer';
+      });
+      panes.forEach((p) => {
+        p.classList.toggle('hidden', (p as HTMLElement).dataset.localePane !== loc);
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-insert-media]').forEach((select) => {
+    select.addEventListener('change', () => {
+      const sel = select as HTMLSelectElement;
+      const editorId = sel.dataset.insertMedia!;
+      if (!sel.value) return;
+      const ed = window.__cmEditors?.[editorId];
+      ed?.insertSnippet(`\n<Figure src="${sel.value}" alt="Image description" caption="" />\n`);
+      sel.value = '';
+    });
+  });
+
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)?.value || '';
+  const alertBox = document.getElementById('post-alert');
+  const showAlert = (msg: string, isErr: boolean) => {
+    if (!alertBox) return;
+    alertBox.textContent = msg;
+    alertBox.className = isErr
+      ? 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400'
+      : 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-emerald-500/15 text-emerald-400';
+  };
+
+  document.getElementById('post-save-btn')?.addEventListener('click', async () => {
+    const form = document.getElementById('post-form') as HTMLElement;
+    const rawId = form.dataset.postId;
+    const postId = rawId ? Number(rawId) : null;
+
+    const payload = {
+      id: postId,
+      category: val('post-category') || 'engineering',
+      featured: (document.getElementById('post-featured') as HTMLInputElement).checked,
+      coverMediaId: val('post-cover') ? Number(val('post-cover')) : null,
+      tags: val('post-tags').split(',').map((s) => s.trim()).filter(Boolean),
+      translations: {
+        id: {
+          title: val('id-title'),
+          slug: val('id-slug'),
+          summary: val('id-summary'),
+          contentMdx: window.__cmEditors?.['cm-post-id']?.getValue() || '',
+          seoTitle: val('id-seo-title'),
+          seoDescription: val('id-seo-desc'),
+          ogImageUrl: '',
+          status: val('id-status') as 'draft' | 'published' | 'archived',
+        },
+        en: {
+          title: val('en-title'),
+          slug: val('en-slug'),
+          summary: val('en-summary'),
+          contentMdx: window.__cmEditors?.['cm-post-en']?.getValue() || '',
+          seoTitle: val('en-seo-title'),
+          seoDescription: val('en-seo-desc'),
+          ogImageUrl: '',
+          status: val('en-status') as 'draft' | 'published' | 'archived',
+        },
+      },
+    };
+
+    const { data, error } = await actions.savePost(payload);
+    if (error) {
+      showAlert(error.message || 'Failed to save article.', true);
+    } else {
+      window.__cmEditors?.['cm-post-id']?.markClean();
+      window.__cmEditors?.['cm-post-en']?.markClean();
+      showAlert('Article saved to SQLite! Remember to run Publish Static Site to update public pages.', false);
+      if (!postId && data?.postId) {
+        window.location.href = `/admin/posts/${data.postId}`;
+      }
+    }
+  });
+
+  document.getElementById('post-preview-btn')?.addEventListener('click', async () => {
+    const editorId = activeLocale === 'id' ? 'cm-post-id' : 'cm-post-en';
+    const mdx = window.__cmEditors?.[editorId]?.getValue() || '';
+    const { data, error } = await actions.previewMdx({ contentMdx: mdx });
+    const panel = document.getElementById('post-preview-panel')!;
+    const contentEl = document.getElementById('post-preview-content')!;
+    panel.classList.remove('hidden');
+
+    if (error) {
+      contentEl.innerHTML = `<p class="text-red-400">${error.message}</p>`;
+    } else if (data?.errors && data.errors.length > 0) {
+      contentEl.innerHTML = `<div class="rounded-xl bg-red-500/15 p-4 text-red-400"><strong>MDX Validation Errors:</strong><ul>${data.errors.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    } else {
+      contentEl.innerHTML = data?.html || '<p class="text-[var(--text-muted)]">Empty content.</p>';
+    }
+    panel.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.getElementById('close-preview-btn')?.addEventListener('click', () => {
+    document.getElementById('post-preview-panel')?.classList.add('hidden');
+  });
+</script>

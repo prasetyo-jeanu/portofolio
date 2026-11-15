@@ -1,0 +1,212 @@
+---
+export const prerender = false;
+import { getSiteSettings } from '../../../lib/settings';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+
+const settings = await getSiteSettings();
+
+const localePanels = [
+  {
+    code: 'id' as const,
+    suffix: 'Id',
+    title: 'Indonesian Copy (ID)',
+    headlineLabel: 'Hero Headline Summary (ID — Footer & RSS)',
+    headlinesLabel: 'Hero Headlines (ID — 1 baris per kalimat)',
+    headlinesHintPrefix: 'Baris ke-1 tampil tetap di paling atas. Baris ke-2 dan seterusnya bergantian otomatis. Gunakan ',
+    headlinesHintCode: '**teks**',
+    headlinesHintSuffix: ' untuk highlight aksen.',
+    introLabel: 'Expertise / Hero Introduction (ID — Subjudul Seksi 05)',
+    backgroundLabel: 'About Background (ID)',
+    philosophyLabel: 'Engineering Philosophy (ID)',
+    headlineVal: settings.headlineId,
+    heroHeadlinesVal: settings.heroHeadlinesId.join('\n'),
+    introVal: settings.introId,
+    backgroundVal: settings.aboutBackgroundId,
+    philosophyVal: settings.aboutPhilosophyId,
+    hidden: false,
+  },
+  {
+    code: 'en' as const,
+    suffix: 'En',
+    title: 'English Copy (EN)',
+    headlineLabel: 'Hero Headline Summary (EN — Footer & RSS)',
+    headlinesLabel: 'Hero Headlines (EN — 1 line per item)',
+    headlinesHintPrefix: 'Line 1 stays pinned at the top. Line 2 onwards rotate automatically. Wrap text in ',
+    headlinesHintCode: '**...**',
+    headlinesHintSuffix: ' for accent gold highlighting.',
+    introLabel: 'Expertise / Hero Introduction (EN — Section 05 Subtitle)',
+    backgroundLabel: 'About Background (EN)',
+    philosophyLabel: 'Engineering Philosophy (EN)',
+    headlineVal: settings.headlineEn,
+    heroHeadlinesVal: settings.heroHeadlinesEn.join('\n'),
+    introVal: settings.introEn,
+    backgroundVal: settings.aboutBackgroundEn,
+    philosophyVal: settings.aboutPhilosophyEn,
+    hidden: true,
+  },
+];
+---
+
+<AdminLayout title="Site Settings" activeNav="settings">
+  <AdminStickyHeader
+    title="Site Settings & Branding"
+    subtitle="Configure developer profile, bilingual bio, social links, and core tech stack."
+    alertId="settings-alert"
+  >
+    <Fragment slot="actions">
+      <button id="settings-save-btn" type="button" class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+        Save Settings
+      </button>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <form id="settings-form" class="space-y-6">
+    <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-6 space-y-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Identity & Links</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Site Name</label>
+          <input id="s-siteName" type="text" value={settings.siteName} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+          <p class="mt-1 text-xs text-[var(--text-muted)]">Jika berisi spasi (lebih dari 1 kata), logo di header otomatis bergantian dengan transisi naik-turun.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Developer Name</label>
+          <input id="s-developerName" type="text" value={settings.developerName} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Public Contact Email</label>
+          <input id="s-email" type="email" value={settings.email} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">GitHub URL</label>
+          <input id="s-github" type="text" value={settings.githubUrl} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">GitLab URL</label>
+          <input id="s-gitlab" type="text" value={settings.gitlabUrl} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">LinkedIn URL</label>
+          <input id="s-linkedin" type="text" value={settings.linkedinUrl} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">X / Twitter URL</label>
+          <input id="s-x" type="text" value={settings.xUrl} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Core Stack (comma separated)</label>
+          <textarea id="s-coreStack" rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 font-mono text-sm leading-relaxed">{settings.coreStack.join(', ')}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <div role="tablist" aria-label="Language copy tabs" class="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
+      <button type="button" role="tab" aria-selected="true" data-settings-tab="id" class="rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer">
+        Indonesian (ID)
+      </button>
+      <button type="button" role="tab" aria-selected="false" data-settings-tab="en" class="rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer">
+        English (EN)
+      </button>
+    </div>
+
+    {localePanels.map((panel) => (
+      <section
+        data-settings-pane={panel.code}
+        class:list={[
+          'rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-6 space-y-4',
+          panel.hidden && 'hidden',
+        ]}
+      >
+        <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">{panel.title}</h2>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{panel.headlineLabel}</label>
+          <textarea id={`s-headline${panel.suffix}`} rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm">{panel.headlineVal}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{panel.headlinesLabel}</label>
+          <textarea id={`s-heroHeadlines${panel.suffix}`} rows="6" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 font-mono text-sm leading-relaxed">{panel.heroHeadlinesVal}</textarea>
+          <p class="mt-1 text-xs text-[var(--text-muted)]">{panel.headlinesHintPrefix}<code>{panel.headlinesHintCode}</code>{panel.headlinesHintSuffix}</p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{panel.introLabel}</label>
+          <textarea id={`s-intro${panel.suffix}`} rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm">{panel.introVal}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{panel.backgroundLabel}</label>
+          <textarea id={`s-aboutBg${panel.suffix}`} rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm">{panel.backgroundVal}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{panel.philosophyLabel}</label>
+          <textarea id={`s-aboutPhil${panel.suffix}`} rows="3" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3.5 py-2 text-sm">{panel.philosophyVal}</textarea>
+        </div>
+      </section>
+    ))}
+  </form>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const tabBtns = document.querySelectorAll<HTMLButtonElement>('[data-settings-tab]');
+  const tabPanes = document.querySelectorAll<HTMLElement>('[data-settings-pane]');
+  const activeTabClass = 'rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer';
+  const inactiveTabClass = 'rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer';
+
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const locale = btn.dataset.settingsTab;
+      tabBtns.forEach((b) => {
+        const isCurrent = b.dataset.settingsTab === locale;
+        b.setAttribute('aria-selected', String(isCurrent));
+        b.className = isCurrent ? activeTabClass : inactiveTabClass;
+      });
+      tabPanes.forEach((pane) => {
+        pane.classList.toggle('hidden', pane.dataset.settingsPane !== locale);
+      });
+    });
+  });
+
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement)?.value || '';
+  const parseLines = (id: string, fallback: string) => {
+    const items = val(id)
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    return items.length > 0 ? items : [fallback.trim()].filter(Boolean);
+  };
+  const alertBox = document.getElementById('settings-alert');
+
+  document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
+    const { error } = await actions.updateSettings({
+      siteName: val('s-siteName'),
+      developerName: val('s-developerName'),
+      email: val('s-email'),
+      coreStack: val('s-coreStack').split(/[,\r\n]+/).map((s) => s.trim()).filter(Boolean),
+      githubUrl: val('s-github'),
+      gitlabUrl: val('s-gitlab'),
+      linkedinUrl: val('s-linkedin'),
+      xUrl: val('s-x'),
+      headlineId: val('s-headlineId'),
+      heroHeadlinesId: parseLines('s-heroHeadlinesId', val('s-headlineId')),
+      introId: val('s-introId'),
+      aboutBackgroundId: val('s-aboutBgId'),
+      aboutPhilosophyId: val('s-aboutPhilId'),
+      headlineEn: val('s-headlineEn'),
+      heroHeadlinesEn: parseLines('s-heroHeadlinesEn', val('s-headlineEn')),
+      introEn: val('s-introEn'),
+      aboutBackgroundEn: val('s-aboutBgEn'),
+      aboutPhilosophyEn: val('s-aboutPhilEn'),
+    });
+
+    if (alertBox) {
+      if (error) {
+        alertBox.textContent = error.message || 'Failed to save settings.';
+        alertBox.className = 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400';
+      } else {
+        alertBox.textContent = 'Settings saved! Run Publish Static Site to update static pages.';
+        alertBox.className = 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-emerald-500/15 text-emerald-400';
+      }
+    }
+  });
+</script>

@@ -1,0 +1,72 @@
+{
+  "id": "poolpack-marketplace",
+  "project_name": "Poolpack.com Marketplace Architecture and Delivery",
+  "category": "marketplace",
+  "featured": false,
+  "sort_order": 8,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "Node.js",
+    "Fastify",
+    "Vue.js",
+    "Nuxt.js",
+    "Tailwind CSS",
+    "PostgreSQL",
+    "MySQL",
+    "Docker",
+    "CI/CD"
+  ],
+  "image": {
+    "file": "poolpack-marketplace.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric marketplace platform connecting multiple sellers, a shared product catalog, customer checkout, and order fulfillment in charcoal and gold.",
+      "id": "Ilustrasi isometrik platform marketplace yang menghubungkan banyak penjual, katalog produk bersama, checkout pembeli, dan pemenuhan pesanan."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Leading Poolpack.com from Vision to Marketplace",
+      "slug": "poolpack-marketplace",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Led a six-person engineering and DevOps team to ship Poolpack.com with modular Fastify/Nuxt architecture and automated Docker deployments.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Led a team of six developers and DevOps engineers to build Poolpack.com, owning core architecture and backend delivery with Fastify, Nuxt.js, and PostgreSQL."
+        },
+        {
+          "label": "My Approach",
+          "text": "Mapped the owner’s vision into buyer, seller, and order workflows, then defined modular backend boundaries and automated Docker deployments to keep changes manageable."
+        },
+        {
+          "label": "Impact",
+          "text": "Connected seller onboarding, product listings, and order management in one marketplace, while establishing a shared delivery process across development and operations."
+        }
+      ]
+    },
+    "id": {
+      "title": "Memimpin Pengembangan Poolpack.com dari Konsep hingga Marketplace",
+      "slug": "poolpack-marketplace",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Memimpin tim yang terdiri dari enam orang di bidang engineering dan DevOps untuk membangun Poolpack.com. Proyek ini menggunakan arsitektur modular Fastify/Nuxt dan proses deployment Docker yang telah diotomatisasi.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Memimpin enam developer dan engineer DevOps dalam membangun Poolpack.com. Saya bertanggung jawab atas arsitektur inti sistem dan pengembangan backend menggunakan Fastify, Nuxt.js, dan PostgreSQL."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Menerjemahkan visi pemilik bisnis menjadi alur kerja pembeli, penjual, dan pengelolaan pesanan. Setelah itu, saya menentukan pembagian modul backend dan mengotomatisasi deployment menggunakan Docker agar pengembangan dan perubahan sistem lebih mudah dikelola."
+        },
+        {
+          "label": "Dampak",
+          "text": "Menghubungkan proses pendaftaran penjual, pengelolaan produk, dan manajemen pesanan dalam satu platform marketplace. Proyek ini juga membentuk proses kerja bersama yang lebih terstruktur antara tim development dan operasional."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "id": "b2b-payment-automation",
+  "project_name": "Xendit and Moota Payment Integration for B2B CTA",
+  "category": "fintech",
+  "featured": true,
+  "sort_order": 6,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "React",
+    "Next.js",
+    "Tailwind CSS",
+    "MUI",
+    "PHP",
+    "CodeIgniter",
+    "MySQL"
+  ],
+  "image": {
+    "file": "b2b-payment-automation.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric B2B payment dashboard connecting bank transfers, verified deposit records, client notifications, and customer support in charcoal and gold.",
+      "id": "Ilustrasi isometrik dasbor pembayaran B2B yang menghubungkan transfer bank, catatan deposit terverifikasi, notifikasi klien, dan tim support."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Automating B2B Deposits with Xendit and Moota",
+      "slug": "b2b-payment-automation",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Integrated Xendit and Moota webhooks with idempotent reconciliation records to support 70–100 daily client deposits.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Integrated Xendit and Moota into the B2B CTA platform using PHP CodeIgniter, MySQL, and React to automate deposit confirmations and client notifications."
+        },
+        {
+          "label": "My Approach",
+          "text": "Chose verified webhooks over repeated status polling, with idempotent updates and reconciliation records to prevent duplicate credits and keep deposits traceable."
+        },
+        {
+          "label": "Impact",
+          "text": "Supported 70–100 clients daily with automatic payment notifications, reducing manual checks for customer support and shortening deposit confirmation workflows."
+        }
+      ]
+    },
+    "id": {
+      "title": "Otomatisasi Deposit B2B dengan Xendit dan Moota",
+      "slug": "b2b-payment-automation",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Mengintegrasikan webhook Xendit dan Moota dengan pencatatan rekonsiliasi yang idempotent untuk mendukung transaksi deposit dari 70–100 klien setiap hari.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Mengintegrasikan Xendit dan Moota ke dalam platform B2B CTA menggunakan PHP CodeIgniter, MySQL, dan React. Integrasi ini mengotomatiskan konfirmasi deposit dan pengiriman notifikasi kepada klien."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Memilih mekanisme webhook terverifikasi daripada melakukan pengecekan status transaksi secara berulang. Saya juga menerapkan pembaruan data yang idempotent dan pencatatan rekonsiliasi untuk mencegah saldo masuk dua kali serta memastikan setiap transaksi deposit dapat ditelusuri."
+        },
+        {
+          "label": "Dampak",
+          "text": "Mendukung transaksi dari 70–100 klien setiap hari dengan notifikasi pembayaran otomatis. Proses ini mengurangi kebutuhan pengecekan manual oleh tim customer support dan mempercepat proses konfirmasi deposit."
+        }
+      ]
+    }
+  }
+}

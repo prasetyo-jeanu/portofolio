@@ -1,0 +1,70 @@
+{
+  "id": "hotel-data-enrichment",
+  "project_name": "Scraped Tripadvisor.com",
+  "category": "data-pipeline",
+  "featured": false,
+  "sort_order": 11,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "Python Scrapy",
+    "Node.js",
+    "Express",
+    "Vue.js",
+    "MySQL",
+    "MongoDB",
+    "Bootstrap"
+  ],
+  "image": {
+    "file": "hotel-data-enrichment.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric hotel data enrichment dashboard organizing property information, hotel photographs, and amenities in charcoal and gold.",
+      "id": "Ilustrasi isometrik dasbor pengayaan data hotel yang menata informasi properti, foto hotel, dan fasilitas kamar."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Enriching Hotel Data with 100,000+ Images",
+      "slug": "hotel-data-enrichment",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Built a hotel data enrichment pipeline with Python Scrapy, Express, and Vue.js organizing property metadata and 100,000+ reusable hotel images.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Built a hotel enrichment pipeline using Python Scrapy, Express, and Vue.js to transform Tripadvisor listings into structured hotel records and organized image collections."
+        },
+        {
+          "label": "My Approach",
+          "text": "Addressed incomplete vendor data with supplemental crawling, adaptive throttling, and retry backoff. Preserved raw data in MongoDB and normalized hotel attributes in MySQL, balancing traceability with consistent queries."
+        },
+        {
+          "label": "Impact",
+          "text": "Enriched hotel profiles and managed 100,000+ images, giving internal teams more complete property information and reusable visual assets for client applications."
+        }
+      ]
+    },
+    "id": {
+      "title": "Memperkaya Data Hotel dengan Lebih dari 100 Ribu Gambar",
+      "slug": "hotel-data-enrichment",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Membangun pipeline pengayaan data hotel menggunakan Python Scrapy, Express, dan Vue.js untuk mengelola informasi properti serta lebih dari 100.000 gambar hotel yang dapat digunakan kembali.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Membangun pipeline pengayaan data hotel menggunakan Python Scrapy, Express, dan Vue.js. Sistem ini mengolah data listing dari Tripadvisor menjadi data hotel yang lebih terstruktur, lengkap dengan koleksi gambar yang tertata."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Mengatasi data vendor yang tidak lengkap melalui proses crawling tambahan, pengaturan kecepatan pengambilan data secara adaptif (*adaptive throttling*), serta mekanisme percobaan ulang dengan jeda bertahap (*retry backoff*). Data mentah disimpan di MongoDB, sedangkan atribut hotel dinormalisasi di MySQL. Pendekatan ini menjaga kemudahan pelacakan data sekaligus memastikan proses pencarian tetap konsisten."
+        },
+        {
+          "label": "Dampak",
+          "text": "Memperkaya profil hotel dan mengelola lebih dari 100.000 gambar. Tim internal kini memiliki informasi properti yang lebih lengkap serta aset visual yang dapat digunakan kembali untuk berbagai aplikasi klien."
+        }
+      ]
+    }
+  }
+}

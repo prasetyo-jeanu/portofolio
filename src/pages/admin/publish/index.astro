@@ -1,0 +1,105 @@
+---
+export const prerender = false;
+import { desc } from 'drizzle-orm';
+import { db } from '../../../db';
+import { publishingJobs } from '../../../db/schema';
+import { formatDate } from '../../../lib/i18n';
+import { canRollback } from '../../../lib/publish';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+
+const jobs = await db.select().from(publishingJobs).orderBy(desc(publishingJobs.startedAt)).limit(20);
+const rollbackAvailable = canRollback();
+---
+
+<AdminLayout title="Publish & Builds" activeNav="publish">
+  <AdminStickyHeader
+    title="Publish & Static Build Pipeline"
+    subtitle="Materializes published SQLite content to MDX, runs Astro SSG + Pagefind, and swaps live static output atomically."
+    alertId="pub-alert"
+  >
+    <Fragment slot="actions">
+      <button id="pub-run-btn" type="button" class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+        Publish Static Site
+      </button>
+      {rollbackAvailable && (
+        <button id="pub-rb-btn" type="button" class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-amber-400 cursor-pointer">
+          Rollback Previous
+        </button>
+      )}
+    </Fragment>
+  </AdminStickyHeader>
+
+  <div class="space-y-4">
+    {jobs.length > 0 ? (
+      jobs.map((job) => (
+        <details class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+          <summary class="flex flex-wrap items-center justify-between gap-4 cursor-pointer">
+            <div class="flex items-center gap-3">
+              <span class="font-mono text-xs text-[var(--text-muted)]">#{job.id}</span>
+              <span
+                class:list={[
+                  'rounded-md px-2 py-0.5 text-xs font-semibold uppercase',
+                  job.status === 'success' && 'bg-emerald-500/15 text-emerald-400',
+                  job.status === 'running' && 'bg-blue-500/15 text-blue-400',
+                  job.status === 'failed' && 'bg-red-500/15 text-red-400',
+                  job.status === 'rolled_back' && 'bg-amber-500/15 text-amber-400',
+                ]}
+              >
+                {job.status}
+              </span>
+              <span class="text-sm font-medium text-[var(--text-primary)]">{job.summary || job.errorMessage || 'Running...'}</span>
+            </div>
+            <span class="text-xs text-[var(--text-muted)]">{formatDate(job.startedAt, 'en')}</span>
+          </summary>
+
+          {job.logs && (
+            <pre class="mt-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 font-mono text-xs text-[var(--text-secondary)] overflow-x-auto whitespace-pre-wrap">{job.logs}</pre>
+          )}
+        </details>
+      ))
+    ) : (
+      <div class="rounded-2xl border border-dashed border-[var(--border-subtle)] p-10 text-center text-sm text-[var(--text-muted)]">
+        No publishing runs yet. Click "Publish Static Site" to generate the initial static build and Pagefind search index.
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const pubBtn = document.getElementById('pub-run-btn');
+  const rbBtn = document.getElementById('pub-rb-btn');
+  const alertBox = document.getElementById('pub-alert');
+
+  if (pubBtn && alertBox) {
+    pubBtn.addEventListener('click', async () => {
+      pubBtn.setAttribute('disabled', 'true');
+      pubBtn.textContent = 'Building & Indexing...';
+      alertBox.classList.add('hidden');
+      const { error } = await actions.triggerPublish();
+      pubBtn.removeAttribute('disabled');
+      pubBtn.textContent = 'Publish Static Site';
+      if (error) {
+        alertBox.textContent = error.message || 'Publish failed.';
+        alertBox.className = 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400';
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
+  if (rbBtn && alertBox) {
+    rbBtn.addEventListener('click', async () => {
+      if (!confirm('Restore previous published static build?')) return;
+      const { error } = await actions.triggerRollback();
+      if (error) {
+        alertBox.textContent = error.message || 'Rollback failed.';
+        alertBox.className = 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400';
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+</script>

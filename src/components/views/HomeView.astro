@@ -1,0 +1,2472 @@
+---
+import { render } from 'astro:content';
+import type { Locale } from '../../db/schema';
+import { getPublishedPostsByLocale, getPublishedProjectsByLocale } from '../../lib/content-queries';
+import { getPublishedFreelanceProjectsByLocale } from '../../lib/freelance-queries';
+import { getLocalizedSectionPath, getProjectUrl, getTranslations } from '../../lib/i18n';
+import { buildAbsoluteUrl, buildPersonJsonLd, buildWebsiteJsonLd } from '../../lib/seo';
+import { getSiteSettings, parseHeadlineSegments, sanitizeImageUrl, stripHeadlineMarkers } from '../../lib/settings';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import ProjectCard from '../ProjectCard.astro';
+import PostCard from '../PostCard.astro';
+import CopyCodeEnhancer from '../CopyCodeEnhancer.astro';
+import Callout from '../mdx/Callout.astro';
+import Figure from '../mdx/Figure.astro';
+
+export interface Props {
+  locale: Locale;
+  canonicalPath?: string;
+}
+
+const { locale } = Astro.props;
+const canonicalPath = Astro.props.canonicalPath ?? (locale === 'en' ? '/' : '/id/');
+const t = getTranslations(locale);
+const settings = await getSiteSettings();
+
+const allPosts = await getPublishedPostsByLocale(locale);
+const latestPosts = allPosts.slice(0, 3);
+const allProjects = await getPublishedProjectsByLocale(locale);
+const freelanceItems = await getPublishedFreelanceProjectsByLocale(locale);
+const hasFreelance = freelanceItems.length > 0;
+
+const renderedProjects = await Promise.all(
+  allProjects.map(async (project) => {
+    const { Content } = await render(project);
+    return { project, Content };
+  }),
+);
+
+const tagCounts = new Map<string, number>();
+for (const project of allProjects) {
+  for (const tag of project.data.tags) {
+    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+  }
+}
+const allProjectTags = Array.from(tagCounts.entries())
+  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  .map(([tag]) => tag)
+  .slice(0, 8);
+const displayProjectTags =
+  allProjectTags.length > 0 ? allProjectTags : settings.coreStack.slice(0, 5);
+
+const freelanceTagCounts = new Map<string, number>();
+for (const item of freelanceItems) {
+  for (const tag of item.techStack) {
+    freelanceTagCounts.set(tag, (freelanceTagCounts.get(tag) || 0) + 1);
+  }
+}
+const displayFreelanceTags = Array.from(freelanceTagCounts.entries())
+  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  .map(([tag]) => tag)
+  .slice(0, 8);
+
+const aboutSectionId = locale === 'id' ? 'tentang' : 'about';
+const projectsSectionId = locale === 'id' ? 'proyek' : 'projects';
+const contactSectionId = locale === 'id' ? 'kontak' : 'contact';
+
+const projectsHref = getLocalizedSectionPath(locale, 'projects');
+const contactHref = getLocalizedSectionPath(locale, 'contact');
+const blogHref = getLocalizedSectionPath(locale, 'blog');
+const alternatePath = locale === 'id' ? '/' : '/id/';
+
+const heroHeadline = locale === 'id' ? settings.headlineId : settings.headlineEn;
+const heroIntro = locale === 'id' ? settings.introId : settings.introEn;
+const backgroundBody = locale === 'id' ? settings.aboutBackgroundId : settings.aboutBackgroundEn;
+const philosophyBody = locale === 'id' ? settings.aboutPhilosophyId : settings.aboutPhilosophyEn;
+const coreStack = settings.coreStack;
+const expertiseItems = locale === 'id' ? settings.expertiseId : settings.expertiseEn;
+const experienceItems = locale === 'id' ? settings.experienceId : settings.experienceEn;
+
+const heroPhrase = locale === 'id' ? 'aplikasi web bisnis' : 'business web applications';
+const rawHeroHeadlines = locale === 'id' ? settings.heroHeadlinesId : settings.heroHeadlinesEn;
+const parsedHeroSlides = (rawHeroHeadlines.length > 0 ? rawHeroHeadlines : [heroHeadline]).map((line) => ({
+  plain: stripHeadlineMarkers(line),
+  segments: parseHeadlineSegments(line, heroPhrase),
+}));
+const heroLeadSlide = parsedHeroSlides[0];
+const rotatingHeroSlides = parsedHeroSlides.slice(1);
+const initialRotatingSlide = rotatingHeroSlides[0] ?? null;
+const slideControlsLabel = locale === 'id' ? 'Pilih pesan hero' : 'Select hero message';
+const slideLabelPrefix = locale === 'id' ? 'Slide hero' : 'Hero slide';
+
+const hreflangs = [
+  { locale: 'id' as const, url: buildAbsoluteUrl('/id/') },
+  { locale: 'en' as const, url: buildAbsoluteUrl('/') },
+  { locale: 'x-default' as const, url: buildAbsoluteUrl('/') },
+];
+
+const authorDisplayName =
+  settings.developerName && settings.developerName !== 'Fullstack Engineer'
+    ? settings.developerName
+    : settings.siteName;
+const seoTitle =
+  settings.developerName && settings.developerName !== 'Fullstack Engineer'
+    ? `${settings.developerName} — ${settings.siteName}`
+    : `${settings.siteName} — Senior Fullstack Developer`;
+const stackSummary = coreStack.slice(0, 5).join(', ');
+const seoDescription =
+  heroHeadline.length >= 115 || !stackSummary
+    ? heroHeadline
+    : `${heroHeadline.replace(/\.$/, '')}. Core stack: ${stackSummary}.`;
+
+const jsonLd = [
+  buildPersonJsonLd({
+    name: authorDisplayName,
+    jobTitle: t.hero.badge,
+    description: seoDescription,
+    url: buildAbsoluteUrl(canonicalPath),
+    image: '/og-default.png',
+    sameAs: [settings.githubUrl, settings.gitlabUrl, settings.linkedinUrl],
+    knowsAbout: coreStack,
+  }),
+  buildWebsiteJsonLd({
+    name: settings.siteName,
+    url: buildAbsoluteUrl(canonicalPath),
+    locale,
+    description: seoDescription,
+  }),
+];
+
+const pillClass =
+  'project-filter-pill inline-flex min-h-[44px] sm:min-h-[34px] cursor-pointer items-center rounded border px-3 py-1 font-mono text-[12.5px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
+
+const filterGroupLabel = locale === 'id' ? 'Filter proyek berdasarkan teknologi' : 'Filter projects by stack';
+const viewGroupLabel = locale === 'id' ? 'Pilihan tampilan proyek' : 'Project layout view';
+const gridViewLabel = locale === 'id' ? 'Tampilan grid' : 'Grid view';
+const listViewLabel = locale === 'id' ? 'Tampilan list penuh' : 'Full-width list view';
+const closeModalLabel = locale === 'id' ? 'Tutup dialog studi kasus' : 'Close case study dialog';
+const modalCloseText = locale === 'id' ? 'Tutup' : 'Close';
+const modalCloseBtnClass =
+  'inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded border border-[var(--text-muted)]/45 bg-[var(--bg-elevated)] px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-primary)] shadow-sm transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-fill)] hover:text-[var(--accent-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
+
+type ChannelKind = 'github' | 'gitlab' | 'linkedin' | 'x';
+interface DirectChannel {
+  kind: ChannelKind;
+  label: string;
+  href: string;
+  displayValue: string;
+}
+
+function sanitizeChannelUrl(raw: string): string {
+  const clean = raw.trim();
+  if (!clean) return '';
+  try {
+    const parsed = new URL(clean);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
+function formatChannelDisplay(url: string): string {
+  return url.replace(/^https?:\/\/(?:www\.)?/i, '').replace(/\/+$/, '');
+}
+
+const rawChannelEntries: Array<{ kind: ChannelKind; label: string; url: string }> = [
+  { kind: 'github', label: 'GITHUB', url: settings.githubUrl },
+  { kind: 'gitlab', label: 'GITLAB', url: settings.gitlabUrl },
+  { kind: 'linkedin', label: 'LINKEDIN', url: settings.linkedinUrl },
+  { kind: 'x', label: 'X / TWITTER', url: settings.xUrl },
+];
+
+const directChannels: DirectChannel[] = rawChannelEntries
+  .map((entry) => {
+    const href = sanitizeChannelUrl(entry.url);
+    return href ? { kind: entry.kind, label: entry.label, href, displayValue: formatChannelDisplay(href) } : null;
+  })
+  .filter((entry): entry is DirectChannel => entry !== null);
+
+const hasContactEmail = Boolean(settings.email && settings.email.trim().length > 0);
+const totalContactChannels = (hasContactEmail ? 1 : 0) + directChannels.length;
+---
+
+<PublicLayout
+  locale={locale}
+  title={seoTitle}
+  description={seoDescription}
+  canonicalPath={canonicalPath}
+  ogImage="/og-default.png"
+  hreflangs={hreflangs}
+  alternateSwitcherUrl={alternatePath}
+  settings={settings}
+  jsonLd={jsonLd}
+>
+  <!-- 00: Broadside Hero Band -->
+  <section id="hero" data-scroll-section="home" class="hero-reveal relative overflow-hidden bg-[var(--bg-primary)]">
+    <div
+      aria-hidden="true"
+      data-hero-code-bg
+      class="hero-code-bg pointer-events-none absolute inset-0 select-none overflow-hidden"
+    >
+      <div class="mx-auto flex h-full max-w-[1376px] justify-end px-5 pt-3 pb-0 sm:px-10 lg:pr-12">
+        <div class="hero-code-frame w-full max-w-[56rem] font-mono text-[13.5px] leading-[1.48] sm:text-[15px] lg:text-[16.5px]">
+          <div class="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)] sm:text-[12px] lg:text-[13px]">
+            <span data-hero-code-lang>PYTHON</span>
+            <span class="text-[var(--text-muted)]">//</span>
+            <span data-hero-code-file class="normal-case tracking-[0.06em] text-[var(--text-secondary)]">rag_pipeline.py</span>
+          </div>
+          <pre class="m-0 whitespace-pre-wrap break-words font-mono text-[var(--text-primary)]"><code data-hero-code-text></code><span aria-hidden="true" class="hero-code-caret ml-0.5 inline-block h-[1em] w-[0.5em] align-[-0.14em] bg-[var(--accent)]"></span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="relative z-10 mx-auto max-w-[1376px] px-5 pt-8 pb-11 sm:px-10 lg:pt-10 lg:pb-14">
+      <div class="flex items-start justify-between gap-6">
+        <div class="min-h-[8rem] max-w-[58rem] min-w-0 flex-1 sm:min-h-[9.5rem] lg:min-h-[15rem] lg:pb-16">
+          {rotatingHeroSlides.length > 1 && (
+            <div
+              class="mb-4 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]"
+              data-hero-telemetry
+            >
+              <span class="inline-flex items-center gap-2 text-[var(--accent)]">
+                <span aria-hidden="true" class="hero-pulse-dot h-1.5 w-1.5 bg-[var(--accent)]"></span>
+                <span>SYS //</span>
+              </span>
+              <span data-hero-index class="tabular-nums text-[var(--text-secondary)]">
+                01 / {String(rotatingHeroSlides.length).padStart(2, '0')}
+              </span>
+              <span
+                class="relative hidden h-[2px] w-24 overflow-hidden bg-[var(--border-ledger)] sm:inline-block"
+                aria-hidden="true"
+              >
+                <span data-hero-progress class="hero-progress-fill block h-full w-full origin-left bg-[var(--accent)]"></span>
+              </span>
+              <div class="flex flex-wrap items-center gap-1" role="group" aria-label={slideControlsLabel}>
+                {rotatingHeroSlides.map((slide, idx) => (
+                  <button
+                    type="button"
+                    data-hero-dot={idx}
+                    aria-label={`${slideLabelPrefix} ${idx + 1}: ${slide.plain}`}
+                    aria-pressed={idx === 0 ? 'true' : 'false'}
+                    class="hero-step-btn inline-flex h-5 cursor-pointer items-center justify-center rounded-sm border border-[var(--border-ledger)] px-1.5 font-mono text-[10px] tabular-nums text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
+                  >
+                    {String(idx + 1).padStart(2, '0')}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <h1
+            class="font-display text-[clamp(1.75rem,4.5vw,3.75rem)] font-bold leading-[1.08] tracking-[-0.026em] text-[var(--text-primary)]"
+          >
+            <span class="block" aria-label={heroLeadSlide.plain}>
+              {heroLeadSlide.segments.map((seg) =>
+                seg.accent ? (
+                  <span class="text-[var(--accent)]">{seg.text}</span>
+                ) : (
+                  <span>{seg.text}</span>
+                ),
+              )}
+            </span>
+
+            {initialRotatingSlide && (
+              <span
+                id="hero-rotating-heading"
+                data-hero-slides={JSON.stringify(rotatingHeroSlides)}
+                aria-label={initialRotatingSlide.plain}
+                class="mt-2.5 block font-display text-[clamp(1.35rem,3.4vw,2.85rem)] font-bold leading-[1.12] tracking-[-0.024em] text-[var(--text-primary)]"
+              >
+                <span data-hero-text>
+                  {initialRotatingSlide.segments.map((seg) =>
+                    seg.accent ? (
+                      <span class="text-[var(--accent)]">{seg.text}</span>
+                    ) : (
+                      <span>{seg.text}</span>
+                    ),
+                  )}
+                </span>{rotatingHeroSlides.length > 1 && (
+                  <span aria-hidden="true" class="hero-cursor ml-1 inline-block h-[0.76em] w-[0.11em] align-[-0.06em] bg-[var(--accent)]"></span>
+                )}
+              </span>
+            )}
+          </h1>
+        </div>
+
+        <div
+          aria-hidden="true"
+          class="hidden shrink-0 select-none pt-0.5 pr-1 font-mono text-[12px] font-medium uppercase leading-[1.35] tracking-[0.2em] text-[var(--text-secondary)]/85 lg:block [writing-mode:vertical-rl]"
+        >
+          <span class="block">PORTFOLIO</span>
+          <span class="block">2014–2026</span>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-wrap items-center gap-4 lg:absolute lg:right-10 lg:bottom-12 lg:mt-0 lg:justify-end">
+        <a
+          href={projectsHref}
+          class="inline-flex h-[50px] items-center justify-center rounded-md bg-[var(--accent-fill)] px-6 py-2.5 text-[15.5px] font-semibold text-[var(--accent-ink)] transition-all hover:brightness-95"
+        >
+          {t.hero.primaryCta}
+        </a>
+        <a
+          href={contactHref}
+          class="inline-flex h-[50px] items-center justify-center rounded-md border border-[var(--text-primary)]/25 px-6 py-2.5 text-[15.5px] font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          {t.hero.contactCta}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 01: Machined Graphite Engineering Ledger Band -->
+  <section
+    id={aboutSectionId}
+    data-scroll-section="about"
+    class="scroll-mt-[58px] border-y border-[var(--border-ledger)] bg-[var(--bg-secondary)]"
+  >
+    <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10 lg:py-11">
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-0">
+        <div class="lg:col-span-4 lg:border-r lg:border-[var(--border-ledger)] lg:pr-6">
+          <h2 class="font-display text-lg font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)] xl:whitespace-nowrap xl:text-[1.32rem] xl:leading-[1.2]">
+            <span class="monograph-num mr-2 text-[var(--accent)]">01</span>
+            {t.about.backgroundTitle}
+          </h2>
+          <p class="mt-4 max-w-[33ch] text-[15.5px] leading-[1.68] text-[var(--text-secondary)]">
+            {backgroundBody}
+          </p>
+        </div>
+
+        <div class="lg:col-span-4 lg:border-r lg:border-[var(--border-ledger)] lg:px-6">
+          <h2 class="font-display text-lg font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)] xl:whitespace-nowrap xl:text-[1.32rem] xl:leading-[1.2]">
+            <span class="monograph-num mr-2 text-[var(--accent)]">02</span>
+            {t.about.philosophyTitle}
+          </h2>
+          <p class="mt-4 max-w-[33ch] text-[15.5px] leading-[1.68] text-[var(--text-secondary)]">
+            {philosophyBody}
+          </p>
+        </div>
+
+        <div class="lg:col-span-4 lg:pl-6">
+          <h2 class="font-display text-lg font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)] xl:whitespace-nowrap xl:text-[1.32rem] xl:leading-[1.2]">
+            <span class="monograph-num mr-2 text-[var(--accent)]">03</span>
+            {t.home.stackTitle}
+          </h2>
+          <ul class="mt-4 flex flex-wrap gap-1.5">
+            {coreStack.map((item) => (
+              <li class="inline-flex items-center gap-1.5 rounded border border-[var(--border-ledger)] bg-[var(--bg-elevated)]/70 px-2 py-[2px] font-mono text-[13px] leading-[1.25] text-[var(--text-primary)]">
+                <span aria-hidden="true" class="h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]"></span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02: Portfolio Showcase Band -->
+  <section
+    id={projectsSectionId}
+    data-scroll-section="projects"
+    class="scroll-mt-[58px] border-b border-[var(--border-ledger)] bg-[var(--bg-specimen)] text-[var(--text-specimen)]"
+  >
+    <div class="mx-auto max-w-[1376px] px-5 pt-9 pb-12 sm:px-10 lg:pt-11 lg:pb-14">
+      <div class="flex flex-col justify-between gap-4 border-b border-[var(--border-specimen)] pb-5 md:flex-row md:items-end">
+        <div>
+          <h2 class="font-display text-2xl font-bold uppercase tracking-[-0.02em] sm:text-[1.9rem] sm:leading-[1.1]">
+            <span class="monograph-num mr-2.5 text-[var(--accent)]">04</span>
+            {t.projects.title}
+          </h2>
+          <p class="mt-2.5 text-sm text-[var(--text-specimen-secondary)]">
+            {t.projects.subtitle}
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 md:justify-end">
+          {hasFreelance && (
+            <div
+              class="portfolio-tab-container inline-flex w-full sm:w-auto items-center rounded border p-1"
+              role="tablist"
+              aria-label={t.freelance.tabGroupLabel}
+            >
+              <button
+                id="portfolio-tab-main"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="portfolio-panel-main"
+                data-portfolio-tab="main"
+                class="portfolio-tab-btn inline-flex flex-1 sm:flex-initial min-h-[44px] sm:min-h-[34px] cursor-pointer items-center justify-center gap-2 rounded-[3px] px-3.5 py-1.5 font-mono text-[12.5px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                <span>{t.freelance.mainTabLabel}</span>
+                <span class="rounded border border-current/25 px-1.5 py-0.5 text-[11px] leading-none opacity-85">
+                  {allProjects.length}
+                </span>
+              </button>
+              <button
+                id="portfolio-tab-freelance"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="portfolio-panel-freelance"
+                data-portfolio-tab="freelance"
+                class="portfolio-tab-btn inline-flex flex-1 sm:flex-initial min-h-[44px] sm:min-h-[34px] cursor-pointer items-center justify-center gap-2 rounded-[3px] px-3.5 py-1.5 font-mono text-[12.5px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                <span>{t.freelance.freelanceTabLabel}</span>
+                <span class="rounded border border-current/25 px-1.5 py-0.5 text-[11px] leading-none opacity-85">
+                  {freelanceItems.length}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div
+        id="portfolio-panel-main"
+        data-portfolio-panel="main"
+        role={hasFreelance ? 'tabpanel' : undefined}
+        aria-labelledby={hasFreelance ? 'portfolio-tab-main' : undefined}
+      >
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2" role="group" aria-label={filterGroupLabel}>
+            <button
+              type="button"
+              data-filter-tag="all"
+              aria-pressed="true"
+              class={pillClass}
+            >
+              {t.projects.allFilter}
+            </button>
+            {displayProjectTags.map((tag) => (
+              <button
+                type="button"
+                data-filter-tag={tag.toLowerCase()}
+                aria-pressed="false"
+                class={pillClass}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
+          {allProjects.length > 0 && (
+            <div
+              class="inline-flex items-center rounded border border-[var(--border-ledger)] bg-[var(--bg-elevated)] p-0.5"
+              role="group"
+              aria-label={viewGroupLabel}
+            >
+              <button
+                type="button"
+                data-project-view-btn="grid"
+                aria-pressed="true"
+                aria-label={gridViewLabel}
+                title={gridViewLabel}
+                class="project-view-btn inline-flex min-h-[40px] sm:min-h-[28px] cursor-pointer items-center gap-1.5 rounded-[3px] px-2.5 py-1 font-mono text-[12px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" class="h-3.5 w-3.5 fill-current">
+                  <rect x="2" y="2" width="5" height="5" rx="0.8" />
+                  <rect x="9" y="2" width="5" height="5" rx="0.8" />
+                  <rect x="2" y="9" width="5" height="5" rx="0.8" />
+                  <rect x="9" y="9" width="5" height="5" rx="0.8" />
+                </svg>
+                <span>Grid</span>
+              </button>
+              <button
+                type="button"
+                data-project-view-btn="list"
+                aria-pressed="false"
+                aria-label={listViewLabel}
+                title={listViewLabel}
+                class="project-view-btn inline-flex min-h-[40px] sm:min-h-[28px] cursor-pointer items-center gap-1.5 rounded-[3px] px-2.5 py-1 font-mono text-[12px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" class="h-3.5 w-3.5 fill-current">
+                  <rect x="2" y="2.5" width="12" height="2.4" rx="0.8" />
+                  <rect x="2" y="6.8" width="12" height="2.4" rx="0.8" />
+                  <rect x="2" y="11.1" width="12" height="2.4" rx="0.8" />
+                </svg>
+                <span>List</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {allProjects.length > 0 ? (
+          <>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <p
+                id="projects-count-status"
+                data-prefix={t.projects.countPrefix}
+                data-connector={t.projects.countConnector}
+                data-unit={t.projects.countUnit}
+                data-total={String(allProjects.length)}
+                class="monograph-num font-mono text-xs text-[var(--text-specimen-secondary)]"
+              >
+                {`${t.projects.countPrefix} ${Math.min(6, allProjects.length)} ${t.projects.countConnector} ${allProjects.length} ${t.projects.countUnit}`}
+              </p>
+            </div>
+
+            <div id="projects-grid" data-view="grid" class="mt-4 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {allProjects.map((project, idx) => (
+                <ProjectCard
+                  locale={locale}
+                  title={project.data.title}
+                  slug={project.data.slug}
+                  role={project.data.role}
+                  summary={project.data.summary}
+                  category={project.data.category}
+                  tags={project.data.tags}
+                  featured={project.data.featured}
+                  isConfidential={project.data.isConfidential}
+                  coverImage={project.data.coverImage}
+                  coverAlt={project.data.coverAlt}
+                  collapsedByDefault={idx >= 6}
+                />
+              ))}
+            </div>
+
+            {allProjects.length > 6 && (
+              <div id="projects-expand-wrap" class="mt-7 flex justify-center">
+                <button
+                  type="button"
+                  id="projects-expand-btn"
+                  data-expanded="false"
+                  data-show-all-label={`${t.projects.showAllButton} (${allProjects.length})`}
+                  data-show-less-label={t.projects.showLessButton}
+                  class="inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-md border border-[var(--border-specimen)] bg-[var(--bg-elevated)] px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                >
+                  <span data-expand-label>{`${t.projects.showAllButton} (${allProjects.length})`}</span>
+                  <svg data-expand-icon class="h-3.5 w-3.5 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"></path>
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            <p
+              id="projects-empty-filter"
+              class="mt-6 hidden rounded-md border border-[var(--border-specimen)] p-6 text-center font-mono text-sm text-[var(--text-specimen-secondary)]"
+            >
+              {t.projects.noFilterMatch}
+            </p>
+          </>
+        ) : (
+          <div class="mt-6 rounded-md border border-[var(--border-specimen)] bg-[var(--bg-elevated)] p-7 text-[var(--text-primary)]">
+            <p
+              id="projects-empty-state"
+              data-empty-all={t.home.emptyProjects}
+              data-empty-filter={t.projects.noFilterMatch}
+              class="font-mono text-sm"
+            >
+              {t.home.emptyProjects}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {hasFreelance && (
+        <div
+          id="portfolio-panel-freelance"
+          data-portfolio-panel="freelance"
+          role="tabpanel"
+          aria-labelledby="portfolio-tab-freelance"
+          class="hidden"
+        >
+          {displayFreelanceTags.length > 0 && (
+            <div class="mt-5 flex flex-wrap items-center gap-2" role="group" aria-label={t.freelance.filterGroupLabel}>
+              <button
+                type="button"
+                data-freelance-filter-tag="all"
+                aria-pressed="true"
+                class={pillClass}
+              >
+                {t.projects.allFilter}
+              </button>
+              {displayFreelanceTags.map((tag) => (
+                <button
+                  type="button"
+                  data-freelance-filter-tag={tag.toLowerCase()}
+                  aria-pressed="false"
+                  class={pillClass}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <p
+            id="freelance-count-status"
+            data-prefix={t.projects.countPrefix}
+            data-connector={t.projects.countConnector}
+            data-unit={t.projects.countUnit}
+            data-total={String(freelanceItems.length)}
+            class="monograph-num mt-4 font-mono text-xs text-[var(--text-specimen-secondary)]"
+          >
+            {`${t.projects.countPrefix} ${freelanceItems.length} ${t.projects.countConnector} ${freelanceItems.length} ${t.projects.countUnit}`}
+          </p>
+
+          <div
+            id="freelance-ledger"
+            class="mt-4 divide-y divide-[var(--border-specimen)] overflow-hidden rounded-md border border-[var(--border-specimen)] bg-[var(--bg-elevated)] text-[var(--text-primary)]"
+          >
+            {freelanceItems.map((item, index) => (
+              <article
+                data-freelance-card
+                data-tags={item.techStack.map((tag) => tag.toLowerCase()).join(',')}
+                class="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-[var(--bg-secondary)]/45 sm:px-5 lg:flex-row lg:items-center lg:justify-between lg:gap-5"
+              >
+                <div class="min-w-0 flex-1 space-y-1.5">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="monograph-num text-xs font-semibold text-[var(--text-muted)]">
+                      #{String(index + 1).padStart(2, '0')}
+                    </span>
+                    <h3 class="font-display text-base font-bold tracking-tight text-[var(--text-primary)]">
+                      {item.title}
+                    </h3>
+                    <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+                      {item.category}
+                    </span>
+                    {item.featured && (
+                      <span class="rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--accent)]">
+                        &starf; {t.projects.featuredBadge}
+                      </span>
+                    )}
+                    {item.isConfidential && (
+                      <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                        {t.projects.confidentialBadge}
+                      </span>
+                    )}
+                  </div>
+
+                  {(item.impact || item.summary) && (
+                    <p class="line-clamp-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+                      <span class="font-mono text-[11.5px] font-semibold uppercase tracking-[0.06em] text-[var(--accent)]">
+                        {t.freelance.impactLabel}:
+                      </span>{' '}
+                      {item.impact || item.summary}
+                    </p>
+                  )}
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 lg:justify-end">
+                  {item.techStack.length > 0 && (
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      {item.techStack.slice(0, 4).map((tag) => (
+                        <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11.5px] text-[var(--text-secondary)]">
+                          {tag}
+                        </span>
+                      ))}
+                      {item.techStack.length > 4 && (
+                        <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11.5px] text-[var(--text-muted)]">
+                          +{item.techStack.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    data-open-freelance={item.slug}
+                    class="inline-flex min-h-[44px] sm:min-h-[34px] shrink-0 cursor-pointer items-center gap-1.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3 py-1.5 font-mono text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                  >
+                    <span>{t.freelance.detailButton}</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <p
+            id="freelance-empty-filter"
+            class="mt-6 hidden rounded-md border border-[var(--border-specimen)] p-6 text-center font-mono text-sm text-[var(--text-specimen-secondary)]"
+          >
+            {t.freelance.noFilterMatch}
+          </p>
+        </div>
+      )}
+    </div>
+
+    {renderedProjects.map(({ project, Content }, idx) => {
+      const prevProject = renderedProjects[(idx - 1 + renderedProjects.length) % renderedProjects.length];
+      const nextProject = renderedProjects[(idx + 1) % renderedProjects.length];
+      return (
+        <dialog
+          id={`project-modal-${project.data.slug}`}
+          data-project-modal={project.data.slug}
+          aria-labelledby={`project-modal-title-${project.data.slug}`}
+          class="m-auto max-h-[88vh] w-[min(92vw,52rem)] overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/75"
+        >
+          <div class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] px-6 py-4">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                {project.data.category}
+              </span>
+              {project.data.featured && (
+                <span class="rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--accent)]">
+                  {t.projects.featuredBadge}
+                </span>
+              )}
+              {project.data.isConfidential && (
+                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+                  {t.projects.confidentialBadge}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              data-close-project-modal
+              aria-label={closeModalLabel}
+              class={modalCloseBtnClass}
+            >
+              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+              <span>{modalCloseText}</span>
+            </button>
+          </div>
+
+          <div class="p-6 sm:p-8">
+            <h3 id={`project-modal-title-${project.data.slug}`} class="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+              {project.data.title}
+            </h3>
+            {project.data.role && (
+              <p class="mt-1 font-mono text-xs text-[var(--text-muted)]">
+                {project.data.role}
+              </p>
+            )}
+
+            {project.data.coverImage && (
+              <img
+                src={project.data.coverImage}
+                alt={project.data.coverAlt || project.data.title}
+                width="640"
+                height="640"
+                loading="lazy"
+                decoding="async"
+                class="mx-auto mt-5 aspect-square w-full max-w-[380px] rounded border border-[var(--border-subtle)] bg-[#222831] object-cover"
+              />
+            )}
+
+            <div class="mt-5 flex flex-wrap gap-2">
+              {project.data.tags.map((tag) => (
+                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            {project.data.isConfidential && (
+              <p class="mt-5 rounded border border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 font-mono text-xs leading-relaxed text-[var(--text-secondary)]">
+                {t.projects.confidentialNote}
+              </p>
+            )}
+
+            <div class="prose-tech mt-6">
+              <Content components={{ Callout, Figure }} />
+            </div>
+
+            <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] pt-5">
+              <a
+                href={getProjectUrl(locale, project.data.slug)}
+                class="inline-flex min-h-[38px] items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-2 font-mono text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <span>{t.projects.openFullPage}</span>
+                <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M7 7h10v10"></path>
+                  <path d="M7 17 17 7"></path>
+                </svg>
+              </a>
+              {project.data.demoUrl && (
+                <a
+                  href={project.data.demoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex min-h-[38px] items-center rounded bg-[var(--accent-fill)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] hover:brightness-95"
+                >
+                  {t.projects.demoButton}
+                </a>
+              )}
+              {project.data.repoUrl && (
+                <a
+                  href={project.data.repoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex min-h-[38px] items-center rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  {t.projects.repoButton}
+                </a>
+              )}
+            </div>
+
+            {renderedProjects.length > 1 && (
+              <nav
+                aria-label={t.projects.modalNavLabel}
+                class="mt-8 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-5"
+              >
+                <button
+                  type="button"
+                  data-open-project={prevProject.project.data.slug}
+                  class="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3.5 py-2 font-mono text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5"></path>
+                    <path d="m12 19-7-7 7-7"></path>
+                  </svg>
+                  <span>{t.projects.prevModal}</span>
+                </button>
+                <span class="monograph-num font-mono text-xs text-[var(--text-muted)]">
+                  {String(idx + 1).padStart(2, '0')} / {String(renderedProjects.length).padStart(2, '0')}
+                </span>
+                <button
+                  type="button"
+                  data-open-project={nextProject.project.data.slug}
+                  class="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3.5 py-2 font-mono text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <span>{t.projects.nextModal}</span>
+                  <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 12h14"></path>
+                    <path d="m12 5 7 7-7 7"></path>
+                  </svg>
+                </button>
+              </nav>
+            )}
+          </div>
+        </dialog>
+      );
+    })}
+
+    {hasFreelance &&
+      freelanceItems.map((item) => (
+        <dialog
+          id={`freelance-modal-${item.slug}`}
+          data-freelance-modal={item.slug}
+          aria-labelledby={`freelance-modal-title-${item.slug}`}
+          class="m-auto max-h-[88vh] w-[min(92vw,48rem)] overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/75"
+        >
+          <div class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] px-6 py-4">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                {item.category}
+              </span>
+              {item.featured && (
+                <span class="rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--accent)]">
+                  &starf; {t.projects.featuredBadge}
+                </span>
+              )}
+              {item.isConfidential && (
+                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                  {t.projects.confidentialBadge}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              data-close-freelance-modal
+              aria-label={t.freelance.closeModalLabel}
+              class={modalCloseBtnClass}
+            >
+              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+              <span>{modalCloseText}</span>
+            </button>
+          </div>
+
+          <div class="p-6 sm:p-8">
+            <h3
+              id={`freelance-modal-title-${item.slug}`}
+              class="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)]"
+            >
+              {item.title}
+            </h3>
+
+            {item.summary && (
+              <p class="mt-2 text-sm text-[var(--text-secondary)]">
+                {item.summary}
+              </p>
+            )}
+
+            {item.techStack.length > 0 && (
+              <div class="mt-4 flex flex-wrap gap-2">
+                {item.techStack.map((tag) => (
+                  <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <dl class="mt-6 space-y-5 border-t border-[var(--border-subtle)] pt-5">
+              {item.contribution && (
+                <div>
+                  <dt class="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                    {t.freelance.contributionLabel}
+                  </dt>
+                  <dd class="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-[var(--text-primary)]">
+                    {item.contribution}
+                  </dd>
+                </div>
+              )}
+
+              {item.approach && (
+                <div>
+                  <dt class="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                    {t.freelance.approachLabel}
+                  </dt>
+                  <dd class="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-[var(--text-primary)]">
+                    {item.approach}
+                  </dd>
+                </div>
+              )}
+
+              {item.impact && (
+                <div class="rounded border border-[var(--accent)]/30 bg-[var(--accent-soft)]/35 p-4">
+                  <dt class="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                    {t.freelance.impactLabel}
+                  </dt>
+                  <dd class="mt-1.5 whitespace-pre-line text-sm font-medium leading-relaxed text-[var(--text-primary)]">
+                    {item.impact}
+                  </dd>
+                </div>
+              )}
+            </dl>
+
+            {(item.demoUrl || item.repoUrl) && (
+              <div class="mt-7 flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-5">
+                {item.demoUrl && (
+                  <a
+                    href={item.demoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center rounded bg-[var(--accent-fill)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] hover:brightness-95"
+                  >
+                    {t.projects.demoButton}
+                  </a>
+                )}
+                {item.repoUrl && (
+                  <a
+                    href={item.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  >
+                    {t.projects.repoButton}
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        </dialog>
+      ))}
+  </section>
+
+  <!-- 05 & 06: Expertise & Experience Bands -->
+  <section class="border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+    <div class="mx-auto max-w-[1376px] px-5 py-14 sm:px-10 lg:py-16">
+      <div class="grid gap-10 lg:grid-cols-12 lg:items-start lg:gap-x-12">
+        <div class="lg:col-span-5 lg:sticky lg:top-[5.25rem]">
+          <div>
+            <h2 class="font-display text-2xl font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)]">
+              <span class="monograph-num mr-2 text-[var(--accent)]">05</span>
+              {t.about.expertiseTitle}
+            </h2>
+            <p class="mt-2 max-w-[52ch] text-sm leading-relaxed text-[var(--text-secondary)]">
+              {heroIntro}
+            </p>
+          </div>
+
+          <div class="mt-6 overflow-hidden rounded-md border border-[var(--border-ledger)] bg-[var(--bg-elevated)]">
+            <div class="flex items-center justify-between gap-3 border-b border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 sm:px-5">
+              <span class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                {t.home.expertiseTitle}
+              </span>
+              <span class="monograph-num font-mono text-[11px] text-[var(--text-secondary)]">
+                {String(expertiseItems.length).padStart(2, '0')}
+              </span>
+            </div>
+
+            <dl class="divide-y divide-[var(--border-ledger)]">
+              {expertiseItems.map((item, idx) => (
+                <div class="px-4 py-4 transition-colors hover:bg-[var(--bg-secondary)]/30 sm:px-5">
+                  <dt class="flex items-center gap-3 font-display text-[15px] font-bold tracking-[-0.01em] text-[var(--text-primary)]">
+                    <span class="monograph-num inline-flex h-6 min-w-[1.875rem] shrink-0 items-center justify-center rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] px-1.5 font-mono text-[11px] font-semibold text-[var(--accent)]">
+                      {String(idx + 1).padStart(2, '0')}
+                    </span>
+                    <span class="leading-snug">{item.title}</span>
+                  </dt>
+                  <dd class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)] sm:pl-[2.625rem]">
+                    {item.description}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7">
+          <div>
+            <h2 class="font-display text-2xl font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)]">
+              <span class="monograph-num mr-2 text-[var(--accent)]">06</span>
+              {t.about.experienceTitle}
+            </h2>
+            <p class="mt-2 max-w-[60ch] text-sm leading-relaxed text-[var(--text-secondary)]">
+              {t.about.experienceSubtitle}
+            </p>
+          </div>
+
+          <div class="mt-6 overflow-hidden rounded-md border border-[var(--border-ledger)] bg-[var(--bg-elevated)]">
+            <div class="flex items-center justify-between gap-3 border-b border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 sm:px-5">
+              <span class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                {t.about.experienceTimelineLabel}
+              </span>
+              <span class="monograph-num font-mono text-[11px] text-[var(--text-secondary)]">
+                {String(experienceItems.length).padStart(2, '0')}
+              </span>
+            </div>
+
+            <div class="divide-y divide-[var(--border-ledger)]">
+              {experienceItems.map((exp) => {
+                const safeLogo = sanitizeImageUrl(exp.logo);
+                const normalizedCompany = exp.company.replace(/\s{2,}/g, ' ').trim();
+                return (
+                  <article class="group px-4 py-5 transition-colors hover:bg-[var(--bg-secondary)]/25 sm:px-5">
+                    <div class="grid gap-3.5 sm:grid-cols-[8.75rem_minmax(0,1fr)] sm:gap-5">
+                      <div class="flex flex-row items-center justify-between gap-3 sm:flex-col sm:items-start sm:justify-start sm:gap-3 sm:pt-0.5">
+                        <span class="monograph-num inline-flex items-center rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--accent)]">
+                          {exp.period}
+                        </span>
+                        {safeLogo && (
+                          <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-1.5 transition-colors group-hover:border-[var(--accent)]/60 sm:h-14 sm:w-14">
+                            <img
+                              src={safeLogo}
+                              alt={normalizedCompany || exp.role}
+                              width="56"
+                              height="56"
+                              loading="lazy"
+                              decoding="async"
+                              class="h-full w-full object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div class="min-w-0">
+                        <h3 class="font-display text-base font-bold leading-snug tracking-[-0.01em] text-[var(--text-primary)] sm:text-[1.0625rem]">
+                          {exp.role}
+                        </h3>
+                        {normalizedCompany && (
+                          <p class="mt-1 font-mono text-xs font-medium leading-relaxed text-[var(--accent)]">
+                            {normalizedCompany}
+                          </p>
+                        )}
+                        <p class="mt-2.5 max-w-[65ch] text-sm leading-relaxed text-[var(--text-secondary)]">
+                          {exp.summary}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04: Latest Technical Articles -->
+  <section data-scroll-section="blog" class="scroll-mt-[58px] border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+    <div class="mx-auto max-w-[1376px] px-5 py-14 sm:px-10 lg:py-16">
+      <div class="flex flex-col justify-between gap-4 border-b border-[var(--border-ledger)] pb-5 sm:flex-row sm:items-end">
+        <div>
+          <h2 class="font-display text-2xl font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)]">
+            <span class="monograph-num mr-2 text-[var(--accent)]">07</span>
+            {t.home.latestPostsTitle}
+          </h2>
+          <p class="mt-1.5 text-sm text-[var(--text-secondary)]">
+            {t.home.latestPostsSubtitle}
+          </p>
+        </div>
+        <a
+          href={blogHref}
+          class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--accent)] transition-colors hover:text-[var(--text-primary)]"
+        >
+          <span>{t.home.viewAllPosts}</span>
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+
+      {latestPosts.length > 0 ? (
+        <div class="mt-7 grid gap-5 md:grid-cols-3">
+          {latestPosts.map((post) => (
+            <PostCard
+              locale={locale}
+              title={post.data.title}
+              slug={post.data.slug}
+              summary={post.data.summary}
+              category={post.data.category}
+              tags={post.data.tags}
+              readingTimeMinutes={post.data.readingTimeMinutes}
+              publishedAt={post.data.publishedAt}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="mt-7 rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-7 font-mono text-sm text-[var(--text-secondary)]">
+          {t.home.emptyPosts}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- 08: Contact & Direct Channels -->
+  <section id={contactSectionId} data-scroll-section="contact" class="scroll-mt-[58px] border-t border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+    <div class="mx-auto max-w-[1376px] px-5 py-14 sm:px-10 lg:py-16">
+      <div class="grid gap-10 lg:grid-cols-12 lg:items-start lg:gap-x-12">
+        <div class="lg:col-span-5">
+          <h2 class="font-display text-2xl font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)]">
+            <span class="monograph-num mr-2 text-[var(--accent)]">08</span>
+            {t.contact.title}
+          </h2>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+            {t.contact.subtitle}
+          </p>
+
+          <div class="mt-6 border-t border-[var(--border-ledger)] pt-6">
+            <h3 class="font-display text-lg font-bold leading-[1.32] tracking-[-0.015em] text-[var(--text-primary)] sm:text-xl">
+              {t.home.ctaTitle}
+            </h3>
+            <p class="mt-2.5 max-w-[44ch] text-sm leading-relaxed text-[var(--text-secondary)]">
+              {t.home.ctaDescription}
+            </p>
+
+            {hasContactEmail && (
+              <div class="mt-6 flex flex-wrap items-center gap-3">
+                <a
+                  href={`mailto:${settings.email}`}
+                  class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-[var(--accent-fill)] px-5 py-2.5 text-sm font-semibold text-[var(--accent-ink)] transition-all hover:brightness-95"
+                >
+                  <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                  </svg>
+                  <span>{t.contact.sendEmail}</span>
+                </a>
+                <button
+                  type="button"
+                  data-copy-email={settings.email}
+                  data-copy-default={t.contact.copyEmail}
+                  data-copy-done={t.contact.copiedEmail}
+                  data-copy-announce={t.contact.copySuccessAnnouncement}
+                  class="contact-copy-btn inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-md border border-[var(--border-ledger)] bg-[var(--bg-elevated)] px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <svg class="contact-copy-icon h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                  </svg>
+                  <svg class="contact-check-icon hidden h-4 w-4 shrink-0 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5"></path>
+                  </svg>
+                  <span data-copy-label>{t.contact.copyEmail}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div class="lg:col-span-7">
+          <div class="overflow-hidden rounded-md border border-[var(--border-ledger)] bg-[var(--bg-elevated)]">
+            <div class="flex items-center justify-between gap-3 border-b border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 sm:px-5">
+              <p class="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                {t.contact.directLinksTitle}
+              </p>
+              <span class="monograph-num font-mono text-[11px] text-[var(--text-secondary)]">
+                {String(totalContactChannels).padStart(2, '0')}
+              </span>
+            </div>
+
+            {totalContactChannels > 0 ? (
+              <ul class="divide-y divide-[var(--border-ledger)]">
+                {hasContactEmail && (
+                  <li class="flex items-center justify-between gap-2 transition-colors hover:bg-[var(--bg-secondary)]/35">
+                    <a
+                      href={`mailto:${settings.email}`}
+                      class="group flex min-h-[60px] min-w-0 flex-1 items-center gap-3.5 px-4 py-3 sm:px-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] text-[var(--text-secondary)] transition-colors group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                        </svg>
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                          EMAIL
+                        </span>
+                        <span class="mt-0.5 block truncate font-mono text-sm font-medium text-[var(--text-primary)] transition-colors group-hover:text-[var(--accent)]">
+                          {settings.email}
+                        </span>
+                      </span>
+                    </a>
+                    <div class="pr-3 sm:pr-4">
+                      <button
+                        type="button"
+                        data-copy-email={settings.email}
+                        data-copy-default={t.contact.copyEmail}
+                        data-copy-done={t.contact.copiedEmail}
+                        data-copy-announce={t.contact.copySuccessAnnouncement}
+                        aria-label={`${t.contact.copyEmail}: ${settings.email}`}
+                        class="contact-copy-btn inline-flex min-h-[44px] sm:min-h-[34px] cursor-pointer items-center gap-1.5 rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] px-2.5 py-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      >
+                        <svg class="contact-copy-icon h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                        </svg>
+                        <svg class="contact-check-icon hidden h-3.5 w-3.5 shrink-0 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M20 6 9 17l-5-5"></path>
+                        </svg>
+                        <span data-copy-label class="hidden sm:inline">{t.contact.copyEmail}</span>
+                      </button>
+                    </div>
+                  </li>
+                )}
+
+                {directChannels.map((channel) => (
+                  <li>
+                    <a
+                      href={channel.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="group flex min-h-[60px] items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-secondary)]/35 sm:px-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      <span class="flex min-w-0 flex-1 items-center gap-3.5">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[var(--border-ledger)] bg-[var(--bg-primary)] text-[var(--text-secondary)] transition-colors group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                          {channel.kind === 'github' && (
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
+                              <path d="M9 18c-4.51 2-5-2-7-2"></path>
+                            </svg>
+                          )}
+                          {channel.kind === 'gitlab' && (
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="m22 13.29-3.33-10a.42.42 0 0 0-.14-.18.38.38 0 0 0-.22-.11.39.39 0 0 0-.23.07.42.42 0 0 0-.14.18l-2.26 6.67H8.32L6.1 3.26a.42.42 0 0 0-.1-.18.38.38 0 0 0-.26-.08.39.39 0 0 0-.23.07.42.42 0 0 0-.14.18L2 13.29a.74.74 0 0 0 .27.83L12 21l9.69-6.88a.71.71 0 0 0 .31-.83Z"></path>
+                            </svg>
+                          )}
+                          {channel.kind === 'linkedin' && (
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                              <rect width="4" height="12" x="2" y="9"></rect>
+                              <circle cx="4" cy="4" r="2"></circle>
+                            </svg>
+                          )}
+                          {channel.kind === 'x' && (
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M4 4l16 16"></path>
+                              <path d="M20 4 4 20"></path>
+                            </svg>
+                          )}
+                        </span>
+                        <span class="min-w-0 flex-1">
+                          <span class="block font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                            {channel.label}
+                          </span>
+                          <span class="mt-0.5 block truncate font-mono text-sm font-medium text-[var(--text-primary)] transition-colors group-hover:text-[var(--accent)]">
+                            {channel.displayValue}
+                          </span>
+                        </span>
+                      </span>
+                      <svg class="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M7 7h10v10"></path>
+                        <path d="M7 17 17 7"></path>
+                      </svg>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p class="px-4 py-6 font-mono text-sm text-[var(--text-secondary)] sm:px-5">
+                {t.contact.emptyNotice}
+              </p>
+            )}
+          </div>
+          <p id="contact-copy-status" class="sr-only" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CopyCodeEnhancer locale={locale} />
+</PublicLayout>
+
+<script>
+  interface HeroSlide {
+    plain: string;
+    segments: Array<{ text: string; accent: boolean }>;
+  }
+
+  function initHeroRotator() {
+    const heroSection = document.getElementById('hero');
+    const heading = document.getElementById('hero-rotating-heading');
+    const textHost = heading?.querySelector('[data-hero-text]');
+    const indexEl = document.querySelector('[data-hero-index]');
+    const progressEl = document.querySelector('[data-hero-progress]') as HTMLElement | null;
+    const stepButtons = Array.from(document.querySelectorAll('[data-hero-dot]'));
+    if (!heroSection || !heading || !textHost) return;
+
+    let slides: HeroSlide[] = [];
+    try {
+      slides = JSON.parse(heading.getAttribute('data-hero-slides') || '[]') as HeroSlide[];
+    } catch {
+      slides = [];
+    }
+    if (slides.length <= 1) return;
+
+    const DWELL_MS = 3400;
+    const HOVER_DWELL_MS = 10000;
+    const DECODE_MS = 520;
+    const GLYPHS = '01<>/#_=+*[]';
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let currentIdx = 0;
+    let rafId = 0;
+    let timerId = 0;
+    let slowed = false;
+    let isDwelling = false;
+    let dwellStartedAt = 0;
+    let dwellTotalMs = DWELL_MS;
+    let dwellBaseFraction = 0;
+
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const totalLabel = pad2(slides.length);
+
+    function renderCleanSlide(slide: HeroSlide) {
+      const frag = document.createDocumentFragment();
+      for (const seg of slide.segments) {
+        const span = document.createElement('span');
+        if (seg.accent) span.className = 'text-[var(--accent)]';
+        span.textContent = seg.text;
+        frag.appendChild(span);
+      }
+      textHost!.replaceChildren(frag);
+      heading!.setAttribute('aria-label', slide.plain);
+    }
+
+    function updateTelemetry(idx: number) {
+      if (indexEl) {
+        indexEl.textContent = `${pad2(idx + 1)} / ${totalLabel}`;
+      }
+      stepButtons.forEach((btn, i) => {
+        btn.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
+      });
+    }
+
+    function restartProgress(totalMs: number, elapsedFraction = 0) {
+      if (!progressEl || prefersReducedMotion) return;
+      progressEl.classList.remove('is-running');
+      progressEl.style.animationDuration = `${totalMs}ms`;
+      progressEl.style.animationDelay = `-${Math.round(elapsedFraction * totalMs)}ms`;
+      progressEl.style.animationPlayState = 'running';
+      void progressEl.offsetWidth;
+      progressEl.classList.add('is-running');
+    }
+
+    function getActiveDwellMs() {
+      if (slowed) return HOVER_DWELL_MS;
+      return prefersReducedMotion ? 4500 : DWELL_MS;
+    }
+
+    function scheduleNext(elapsedFraction = 0) {
+      window.clearTimeout(timerId);
+      if (document.hidden) {
+        isDwelling = false;
+        return;
+      }
+      const clampedFraction = Math.min(0.99, Math.max(0, elapsedFraction));
+      const totalMs = getActiveDwellMs();
+      const remainingMs = Math.max(80, Math.round((1 - clampedFraction) * totalMs));
+      isDwelling = true;
+      dwellStartedAt = performance.now();
+      dwellTotalMs = totalMs;
+      dwellBaseFraction = clampedFraction;
+      restartProgress(totalMs, clampedFraction);
+      timerId = window.setTimeout(() => {
+        isDwelling = false;
+        transitionTo((currentIdx + 1) % slides.length);
+      }, remainingMs);
+    }
+
+    function transitionTo(nextIdx: number) {
+      if (nextIdx === currentIdx) return;
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
+      isDwelling = false;
+
+      const fromPlain = slides[currentIdx]?.plain || '';
+      const target = slides[nextIdx];
+      currentIdx = nextIdx;
+      updateTelemetry(nextIdx);
+
+      if (prefersReducedMotion) {
+        renderCleanSlide(target);
+        scheduleNext();
+        return;
+      }
+
+      const targetChars: Array<{ ch: string; accent: boolean }> = [];
+      for (const seg of target.segments) {
+        for (const ch of seg.text) {
+          targetChars.push({ ch, accent: seg.accent });
+        }
+      }
+
+      const startTime = performance.now();
+      const fromLen = fromPlain.length;
+      const targetLen = targetChars.length;
+
+      const stepFrame = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / DECODE_MS);
+        if (progress >= 1) {
+          renderCleanSlide(target);
+          scheduleNext();
+          return;
+        }
+
+        const stepBucket = Math.floor(elapsed / 42);
+        const displayLen = Math.max(
+          1,
+          Math.round(fromLen + (targetLen - fromLen) * Math.min(1, progress * 1.45)),
+        );
+
+        const frag = document.createDocumentFragment();
+        let runKind: 'normal' | 'accent' | 'cipher' | null = null;
+        let runText = '';
+
+        const flushRun = () => {
+          if (!runText || !runKind) return;
+          const span = document.createElement('span');
+          if (runKind === 'accent') span.className = 'text-[var(--accent)]';
+          else if (runKind === 'cipher') span.className = 'text-[var(--accent)]/65';
+          span.textContent = runText;
+          frag.appendChild(span);
+          runText = '';
+        };
+
+        for (let i = 0; i < displayLen; i++) {
+          const item = targetChars[i];
+          const resolveThreshold = 0.14 + (i / Math.max(1, targetLen)) * 0.72;
+          let ch = ' ';
+          let kind: 'normal' | 'accent' | 'cipher' = 'cipher';
+
+          if (item && item.ch === ' ') {
+            ch = ' ';
+            kind = item.accent ? 'accent' : 'normal';
+          } else if (item && progress >= resolveThreshold) {
+            ch = item.ch;
+            kind = item.accent ? 'accent' : 'normal';
+          } else {
+            ch = GLYPHS[(i * 7 + stepBucket * 13) % GLYPHS.length];
+            kind = 'cipher';
+          }
+
+          if (kind !== runKind) {
+            flushRun();
+            runKind = kind;
+          }
+          runText += ch;
+        }
+        flushRun();
+
+        textHost!.replaceChildren(frag);
+        rafId = window.requestAnimationFrame(stepFrame);
+      };
+
+      rafId = window.requestAnimationFrame(stepFrame);
+    }
+
+    stepButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.getAttribute('data-hero-dot'));
+        if (!Number.isNaN(idx) && idx >= 0 && idx < slides.length) {
+          transitionTo(idx);
+        }
+      });
+    });
+
+    const setSlowed = (nextSlowed: boolean) => {
+      if (slowed === nextSlowed) return;
+      let currentFraction = 0;
+      if (isDwelling) {
+        currentFraction = Math.min(
+          0.99,
+          dwellBaseFraction + (performance.now() - dwellStartedAt) / Math.max(1, dwellTotalMs),
+        );
+      }
+      slowed = nextSlowed;
+      if (isDwelling) {
+        scheduleNext(currentFraction);
+      }
+    };
+
+    heroSection.addEventListener('pointerenter', () => setSlowed(true));
+    heroSection.addEventListener('pointerleave', () => setSlowed(false));
+    heroSection.addEventListener('focusin', () => setSlowed(true));
+    heroSection.addEventListener('focusout', () => {
+      if (!heroSection.contains(document.activeElement)) setSlowed(false);
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        window.clearTimeout(timerId);
+        isDwelling = false;
+      } else {
+        scheduleNext();
+      }
+    });
+
+    scheduleNext();
+  }
+
+  initHeroRotator();
+
+  type CodeSnippet = {
+    lang: 'PYTHON' | 'TYPESCRIPT' | 'PHP' | 'GOLANG';
+    file: string;
+    lines: string[];
+  };
+
+  function initHeroCodeBackground() {
+    const bgEl = document.querySelector<HTMLElement>('[data-hero-code-bg]');
+    const langEl = document.querySelector<HTMLElement>('[data-hero-code-lang]');
+    const fileEl = document.querySelector<HTMLElement>('[data-hero-code-file]');
+    const codeEl = document.querySelector<HTMLElement>('[data-hero-code-text]');
+    if (!bgEl || !langEl || !fileEl || !codeEl) return;
+
+    const snippets: CodeSnippet[] = [
+      {
+        lang: 'PYTHON',
+        file: 'rag_pipeline.py',
+        lines: [
+          'async def query_knowledge(prompt: str, tenant_id: str, top_k: int = 6) -> dict:',
+          '    cleaned = normalize_query(prompt)',
+          '    vector = await embedder.encode(cleaned)',
+          '    docs = await vector_store.search(',
+          '        vector=vector,',
+          '        filters={"tenant": tenant_id, "active": True},',
+          '        limit=top_k,',
+          '    )',
+          '    relevant = [d for d in docs if d.score >= 0.78]',
+          '    context = "\\n---\\n".join(d.chunk for d in relevant)',
+          '    answer = await llm.generate(system=SYS_PROMPT, context=context, q=cleaned)',
+          '    await audit_log.record(tenant_id=tenant_id, query=cleaned, hits=len(relevant))',
+          '    return {',
+          '        "answer": answer,',
+          '        "sources": [{"id": d.source_id, "score": round(d.score, 3)} for d in relevant],',
+          '    }',
+        ],
+      },
+      {
+        lang: 'PYTHON',
+        file: 'rate_scraper.py',
+        lines: [
+          'async def fetch_supplier_rates(hotels: list[str], checkin: str) -> list[dict]:',
+          '    sem = asyncio.Semaphore(12)',
+          '    results: list[dict] = []',
+          '    async def pull(hotel_id: str) -> dict | None:',
+          '        async with sem:',
+          '            for attempt in range(3):',
+          '                res = await client.get(f"/inventory/{hotel_id}", params={"date": checkin})',
+          '                if res.status_code == 200:',
+          '                    return normalize_rate(hotel_id, res.json())',
+          '                await asyncio.sleep(0.4 * (attempt + 1))',
+          '            return None',
+          '    batches = await asyncio.gather(*(pull(h) for h in hotels))',
+          '    for item in batches:',
+          '        if item is not None:',
+          '            results.append(item)',
+          '    return results',
+        ],
+      },
+      {
+        lang: 'PYTHON',
+        file: 'ledger_sync.py',
+        lines: [
+          '@router.post("/erp/reconcile")',
+          'def reconcile_batch(entries: list[JournalRow], db: Session = Depends(get_db)):',
+          '    balanced: list[JournalLedger] = []',
+          '    rejected: list[str] = []',
+          '    for row in entries:',
+          '        if abs(row.debit - row.credit) > 0.01:',
+          '            rejected.append(row.voucher_no)',
+          '            continue',
+          '        balanced.append(JournalLedger.from_row(row))',
+          '    with db.begin():',
+          '        if balanced:',
+          '            db.bulk_save_objects(balanced)',
+          '    return {',
+          '        "posted": len(balanced),',
+          '        "rejected": rejected,',
+          '    }',
+        ],
+      },
+      {
+        lang: 'TYPESCRIPT',
+        file: 'bookingRouter.ts',
+        lines: [
+          'export async function dispatchBooking(payload: unknown): Promise<BookingReceipt> {',
+          '  const input = BookingSchema.parse(payload);',
+          '  const quote = await pricingService.lockRate(input.hotelCode, input.nights);',
+          '  if (!quote.available) {',
+          '    throw new InventoryUnavailableError(input.hotelCode, input.checkIn);',
+          '  }',
+          '  return await db.transaction(async (tx) => {',
+          '    const order = await tx',
+          '      .insert(bookings)',
+          '      .values({ ...input, netTotal: quote.net, currency: quote.currency })',
+          '      .returning();',
+          '    await queue.publish("booking.confirmed", { orderId: order[0].id });',
+          '    await cache.invalidate(`avail:${input.hotelCode}:${input.checkIn}`);',
+          '    return { status: "confirmed", reference: order[0].code };',
+          '  });',
+          '}',
+        ],
+      },
+      {
+        lang: 'TYPESCRIPT',
+        file: 'workerQueue.ts',
+        lines: [
+          'export async function runWorkerPool<T>(',
+          '  jobs: readonly T[],',
+          '  handler: (item: T) => Promise<void>,',
+          '  concurrency = 6,',
+          '): Promise<{ completed: number; failed: number }> {',
+          '  const pending = [...jobs];',
+          '  let completed = 0;',
+          '  let failed = 0;',
+          '  const runners = Array.from({ length: concurrency }, async () => {',
+          '    while (pending.length > 0) {',
+          '      const job = pending.shift();',
+          '      if (!job) continue;',
+          '      try { await handler(job); completed += 1; } catch { failed += 1; }',
+          '    }',
+          '  });',
+          '  await Promise.all(runners);',
+          '  return { completed, failed };',
+          '}',
+        ],
+      },
+      {
+        lang: 'TYPESCRIPT',
+        file: 'loyaltySync.ts',
+        lines: [
+          'export async function redeemMemberPoints(userId: string, rewardId: string) {',
+          '  const member = await loyaltyRepo.findActive(userId);',
+          '  const reward = await catalogRepo.findReward(rewardId);',
+          '  if (!member || !reward) throw new NotFoundError("Reward or member missing");',
+          '  if (member.points < reward.pointCost) {',
+          '    throw new InsufficientPointsError(member.points, reward.pointCost);',
+          '  }',
+          '  const voucher = await partnerApi.issueVoucher({',
+          '    memberId: member.id,',
+          '    sku: reward.sku,',
+          '    idempotencyKey: `${member.id}:${reward.id}:${Date.now()}`,',
+          '  });',
+          '  await loyaltyRepo.deductPoints(member.id, reward.pointCost, voucher.serial);',
+          '  await mailer.sendVoucherReceipt(member.email, voucher.code);',
+          '  return voucher;',
+          '}',
+        ],
+      },
+      {
+        lang: 'PHP',
+        file: 'HotelSyncService.php',
+        lines: [
+          'final class HotelSyncService',
+          '{',
+          '    public function __construct(',
+          '        private readonly SupplierGateway $gateway,',
+          '        private readonly RoomRepository $repository,',
+          '        private readonly CacheInterface $cache,',
+          '    ) {}',
+          '',
+          '    public function syncAvailability(string $cityCode, DateTimeImmutable $date): int',
+          '    {',
+          '        $rooms = $this->gateway->fetchRooms($cityCode, $date->format("Y-m-d"));',
+          '        $mapped = array_map(fn (array $r) => RoomDto::fromSupplier($r), $rooms);',
+          '        $updated = $this->repository->upsertBatch($mapped);',
+          '        $this->cache->delete("rooms:{$cityCode}:{$date->format("Y-m-d")}");',
+          '        return $updated;',
+          '    }',
+          '}',
+        ],
+      },
+      {
+        lang: 'PHP',
+        file: 'ErpInvoiceAction.php',
+        lines: [
+          'final class PostProductionLedger',
+          '{',
+          '    public function handle(WorkOrder $order, Branch $branch): LedgerEntry',
+          '    {',
+          '        return DB::transaction(function () use ($order, $branch): LedgerEntry {',
+          '            $order->lockForUpdate();',
+          '            $entry = LedgerEntry::createFromOrder($order, $branch->id);',
+          '            foreach ($order->materials as $line) {',
+          '                $this->stockService->deductBatch($line->sku, $line->qty);',
+          '            }',
+          '            $order->markPosted($entry->voucher_number);',
+          '            event(new LedgerPosted($entry->id, $branch->id));',
+          '            return $entry;',
+          '        });',
+          '    }',
+          '}',
+        ],
+      },
+      {
+        lang: 'PHP',
+        file: 'WebhookController.php',
+        lines: [
+          'final class WebhookController',
+          '{',
+          '    public function __invoke(Request $request): JsonResponse',
+          '    {',
+          '        $rawBody = $request->getContent();',
+          '        $signature = $request->header("X-Signature-256", "");',
+          '        abort_unless($this->verifier->matches($rawBody, $signature), 401);',
+          '        $payload = $request->validate([',
+          '            "event" => ["required", "string"],',
+          '            "reference" => ["required", "string", "max:64"],',
+          '        ]);',
+          '        ProcessGatewayEvent::dispatch($payload)->onQueue("webhooks");',
+          '        return response()->json(["accepted" => true, "ref" => $payload["reference"]], 202);',
+          '    }',
+          '}',
+        ],
+      },
+      {
+        lang: 'GOLANG',
+        file: 'worker_pool.go',
+        lines: [
+          'func DispatchJobs(ctx context.Context, jobs <-chan SyncJob, workers int) error {',
+          '    g, ctx := errgroup.WithContext(ctx)',
+          '    var processed atomic.Int64',
+          '    for i := 0; i < workers; i++ {',
+          '        workerID := i + 1',
+          '        g.Go(func() error {',
+          '            for {',
+          '                select {',
+          '                case <-ctx.Done():',
+          '                    return ctx.Err()',
+          '                case job, ok := <-jobs:',
+          '                    if !ok { return nil }',
+          '                    if err := processJob(ctx, workerID, job); err != nil { return err }',
+          '                    processed.Add(1)',
+          '                }',
+          '            }',
+          '        })',
+          '    }',
+          '    return g.Wait()',
+          '}',
+        ],
+      },
+      {
+        lang: 'GOLANG',
+        file: 'rate_limiter.go',
+        lines: [
+          'func (l *TokenLimiter) Allow(clientKey string) (bool, int) {',
+          '    l.mu.Lock()',
+          '    defer l.mu.Unlock()',
+          '    now := time.Now()',
+          '    bucket, ok := l.clients[clientKey]',
+          '    if !ok || now.Sub(bucket.UpdatedAt) > l.window {',
+          '        next := &Bucket{Tokens: l.burst - 1, UpdatedAt: now}',
+          '        l.clients[clientKey] = next',
+          '        return true, next.Tokens',
+          '    }',
+          '    if bucket.Tokens <= 0 {',
+          '        return false, 0',
+          '    }',
+          '    bucket.Tokens--',
+          '    bucket.UpdatedAt = now',
+          '    return true, bucket.Tokens',
+          '}',
+        ],
+      },
+      {
+        lang: 'GOLANG',
+        file: 'access_gate.go',
+        lines: [
+          'func ValidateTicketQR(ctx context.Context, repo TicketRepo, token string) (GatePass, error) {',
+          '    cleanToken := strings.TrimSpace(token)',
+          '    if cleanToken == "" {',
+          '        return GatePass{}, ErrEmptyToken',
+          '    }',
+          '    pass, err := repo.LockByToken(ctx, cleanToken)',
+          '    if err != nil {',
+          '        return GatePass{}, fmt.Errorf("ticket lookup %s: %w", cleanToken, err)',
+          '    }',
+          '    if pass.CheckedInAt != nil {',
+          '        return GatePass{}, ErrAlreadyAdmitted',
+          '    }',
+          '    if err := repo.MarkAdmitted(ctx, pass.ID, time.Now().UTC()); err != nil {',
+          '        return GatePass{}, fmt.Errorf("mark admitted: %w", err)',
+          '    }',
+          '    return pass, nil',
+          '}',
+        ],
+      },
+    ];
+
+    const pickRandomSnippet = (exclude?: CodeSnippet): CodeSnippet => {
+      const diffLang = exclude ? snippets.filter((s) => s.lang !== exclude.lang) : snippets;
+      const pool = diffLang.length > 0 ? diffLang : snippets;
+      return pool[Math.floor(Math.random() * pool.length)]!;
+    };
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let current = pickRandomSnippet();
+    let fullText = current.lines.join('\n');
+    let cursor = 0;
+    let timerId = 0;
+    let pausedForHidden = false;
+
+    const renderMeta = (snippet: CodeSnippet) => {
+      langEl.textContent = snippet.lang;
+      fileEl.textContent = snippet.file;
+    };
+
+    renderMeta(current);
+
+    if (reducedMotion) {
+      codeEl.textContent = fullText;
+      return;
+    }
+
+    const scheduleTick = () => {
+      window.clearTimeout(timerId);
+      if (pausedForHidden) return;
+
+      if (cursor < fullText.length) {
+        const chunkSize = 2 + Math.floor(Math.random() * 2);
+        cursor = Math.min(fullText.length, cursor + chunkSize);
+        codeEl.textContent = fullText.slice(0, cursor);
+        const lastChar = fullText[cursor - 1];
+        const delay = lastChar === '\n' ? 50 : 16 + Math.floor(Math.random() * 18);
+        timerId = window.setTimeout(scheduleTick, delay);
+        return;
+      }
+
+      timerId = window.setTimeout(() => {
+        bgEl.classList.add('is-switching');
+        timerId = window.setTimeout(() => {
+          current = pickRandomSnippet(current);
+          fullText = current.lines.join('\n');
+          cursor = 0;
+          renderMeta(current);
+          codeEl.textContent = '';
+          bgEl.classList.remove('is-switching');
+          scheduleTick();
+        }, 300);
+      }, 2100);
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      pausedForHidden = document.hidden;
+      if (pausedForHidden) {
+        window.clearTimeout(timerId);
+      } else {
+        scheduleTick();
+      }
+    });
+
+    scheduleTick();
+  }
+
+  initHeroCodeBackground();
+
+  const filterButtons = document.querySelectorAll('[data-filter-tag]');
+  const projectsGrid = document.getElementById('projects-grid');
+  const viewButtons = document.querySelectorAll('[data-project-view-btn]');
+  const projectCards = document.querySelectorAll('[data-project-card]');
+  const emptyFilterNotice = document.getElementById('projects-empty-filter');
+  const emptyStateNotice = document.getElementById('projects-empty-state');
+
+  const VIEW_STORAGE_KEY = 'portfolio-projects-view';
+  function applyProjectView(mode: 'grid' | 'list') {
+    if (!projectsGrid) return;
+    projectsGrid.setAttribute('data-view', mode);
+    viewButtons.forEach((btn) => {
+      const btnMode = btn.getAttribute('data-project-view-btn');
+      btn.setAttribute('aria-pressed', btnMode === mode ? 'true' : 'false');
+    });
+  }
+
+  try {
+    const savedView = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (savedView === 'list' || savedView === 'grid') {
+      applyProjectView(savedView);
+    }
+  } catch {
+    // Ignore storage restriction
+  }
+
+  viewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const nextView = btn.getAttribute('data-project-view-btn') === 'list' ? 'list' : 'grid';
+      applyProjectView(nextView);
+      try {
+        localStorage.setItem(VIEW_STORAGE_KEY, nextView);
+      } catch {
+        // Ignore storage restriction
+      }
+    });
+  });
+
+  const projectsCountStatus = document.getElementById('projects-count-status');
+  const projectsExpandWrap = document.getElementById('projects-expand-wrap');
+  const projectsExpandBtn = document.getElementById('projects-expand-btn');
+  let selectedProjectTag = 'all';
+  let projectsExpanded = false;
+
+  function updateProjectStatusAndExpand(visibleCount: number) {
+    if (projectsCountStatus) {
+      const prefix = projectsCountStatus.getAttribute('data-prefix') || 'Showing';
+      const connector = projectsCountStatus.getAttribute('data-connector') || 'of';
+      const unit = projectsCountStatus.getAttribute('data-unit') || 'projects';
+      const total = projectsCountStatus.getAttribute('data-total') || String(projectCards.length);
+      projectsCountStatus.textContent = `${prefix} ${visibleCount} ${connector} ${total} ${unit}`;
+    }
+
+    if (projectsExpandWrap) {
+      projectsExpandWrap.classList.toggle('hidden', selectedProjectTag !== 'all');
+    }
+
+    if (projectsExpandBtn) {
+      projectsExpandBtn.setAttribute('data-expanded', String(projectsExpanded));
+      const labelEl = projectsExpandBtn.querySelector('[data-expand-label]');
+      const iconEl = projectsExpandBtn.querySelector('[data-expand-icon]');
+      const nextLabel = projectsExpanded
+        ? projectsExpandBtn.getAttribute('data-show-less-label') || 'Show less'
+        : projectsExpandBtn.getAttribute('data-show-all-label') || 'Show all';
+      if (labelEl) labelEl.textContent = nextLabel;
+      if (iconEl) iconEl.classList.toggle('rotate-180', projectsExpanded);
+    }
+  }
+
+  function applyProjectFilters() {
+    let visibleCount = 0;
+    projectCards.forEach((card) => {
+      const rawTags = card.getAttribute('data-tags') || '';
+      const tags = rawTags.split(',').filter(Boolean);
+      const isOverflow = card.getAttribute('data-project-overflow') === 'true';
+      const matchesTag = selectedProjectTag === 'all' || tags.includes(selectedProjectTag);
+      const shouldShow =
+        selectedProjectTag === 'all' ? !isOverflow || projectsExpanded : matchesTag;
+      card.classList.toggle('hidden', !shouldShow);
+      if (shouldShow) visibleCount += 1;
+    });
+
+    if (emptyFilterNotice) {
+      emptyFilterNotice.classList.toggle('hidden', visibleCount > 0);
+    }
+    if (emptyStateNotice) {
+      emptyStateNotice.textContent =
+        selectedProjectTag === 'all'
+          ? emptyStateNotice.dataset.emptyAll || ''
+          : emptyStateNotice.dataset.emptyFilter || '';
+    }
+    updateProjectStatusAndExpand(visibleCount);
+  }
+
+  filterButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      selectedProjectTag = button.getAttribute('data-filter-tag') || 'all';
+      filterButtons.forEach((btn) => {
+        btn.setAttribute('aria-pressed', btn === button ? 'true' : 'false');
+      });
+      applyProjectFilters();
+    });
+  });
+
+  projectsExpandBtn?.addEventListener('click', () => {
+    projectsExpanded = !projectsExpanded;
+    applyProjectFilters();
+    if (!projectsExpanded) {
+      projectsGrid?.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  const projectModals = Array.from(document.querySelectorAll<HTMLDialogElement>('[data-project-modal]'));
+  let suppressHashCleanup = false;
+
+  function openProjectModal(slug: string, updateHash = true) {
+    const dialog = projectModals.find((el) => el.getAttribute('data-project-modal') === slug);
+    if (!dialog) return;
+
+    const currentlyOpen = projectModals.find((el) => el.open && el !== dialog);
+    if (currentlyOpen) {
+      suppressHashCleanup = true;
+      currentlyOpen.close();
+      suppressHashCleanup = false;
+    }
+
+    dialog.scrollTop = 0;
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+    if (updateHash && window.location.hash !== `#project-${slug}`) {
+      window.history.replaceState(null, '', `#project-${slug}`);
+    }
+  }
+
+  document.querySelectorAll('[data-open-project]').forEach((trigger) => {
+    trigger.addEventListener('click', (event) => {
+      if (trigger instanceof HTMLAnchorElement) {
+        const mouseEvent = event as MouseEvent;
+        if (
+          mouseEvent.metaKey ||
+          mouseEvent.ctrlKey ||
+          mouseEvent.shiftKey ||
+          mouseEvent.altKey ||
+          mouseEvent.button !== 0
+        ) {
+          return;
+        }
+        event.preventDefault();
+      }
+      event.stopPropagation();
+      const slug = trigger.getAttribute('data-open-project');
+      if (slug) openProjectModal(slug, true);
+    });
+  });
+
+  projectCards.forEach((card) => {
+    card.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('a, button')) return;
+      const slug = card.getAttribute('data-project-slug');
+      if (slug) openProjectModal(slug, true);
+    });
+  });
+
+  projectModals.forEach((dialog) => {
+    const closeBtn = dialog.querySelector('[data-close-project-modal]');
+    closeBtn?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) {
+        dialog.close();
+      }
+    });
+    dialog.addEventListener('close', () => {
+      if (suppressHashCleanup) return;
+      if (window.location.hash.startsWith('#project-')) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    });
+  });
+
+  const portfolioTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-portfolio-tab]'));
+  const mainPanel = document.querySelector<HTMLElement>('[data-portfolio-panel="main"]');
+  const freelancePanel = document.querySelector<HTMLElement>('[data-portfolio-panel="freelance"]');
+
+  function activatePortfolioTab(targetTab: 'main' | 'freelance') {
+    const resolvedTab = targetTab === 'freelance' && freelancePanel ? 'freelance' : 'main';
+    portfolioTabs.forEach((tabBtn) => {
+      const isSelected = tabBtn.getAttribute('data-portfolio-tab') === resolvedTab;
+      tabBtn.setAttribute('aria-selected', String(isSelected));
+    });
+    if (mainPanel) {
+      mainPanel.classList.toggle('hidden', resolvedTab !== 'main');
+    }
+    if (freelancePanel) {
+      freelancePanel.classList.toggle('hidden', resolvedTab !== 'freelance');
+    }
+  }
+
+  portfolioTabs.forEach((tabBtn, idx) => {
+    tabBtn.addEventListener('click', () => {
+      const nextTab = tabBtn.getAttribute('data-portfolio-tab') === 'freelance' ? 'freelance' : 'main';
+      activatePortfolioTab(nextTab);
+    });
+    tabBtn.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      if (portfolioTabs.length < 2) return;
+      event.preventDefault();
+      const nextIdx =
+        event.key === 'ArrowRight'
+          ? (idx + 1) % portfolioTabs.length
+          : (idx - 1 + portfolioTabs.length) % portfolioTabs.length;
+      const targetBtn = portfolioTabs[nextIdx];
+      const nextTab = targetBtn.getAttribute('data-portfolio-tab') === 'freelance' ? 'freelance' : 'main';
+      activatePortfolioTab(nextTab);
+      targetBtn.focus();
+    });
+  });
+
+  function syncPortfolioFromHash(scrollOnMatch: boolean) {
+    const hash = window.location.hash;
+    if (hash === '#freelance') {
+      const freelanceTab = document.querySelector<HTMLButtonElement>('[data-portfolio-tab="freelance"]');
+      if (!freelanceTab) return;
+      activatePortfolioTab('freelance');
+      if (scrollOnMatch) {
+        freelanceTab.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+
+    if (hash.startsWith('#project-')) {
+      const rawSlug = hash.slice('#project-'.length);
+      let decodedSlug = rawSlug;
+      try {
+        decodedSlug = decodeURIComponent(rawSlug);
+      } catch {}
+      if (!decodedSlug) return;
+      activatePortfolioTab('main');
+      openProjectModal(decodedSlug, false);
+    }
+  }
+
+  syncPortfolioFromHash(true);
+  window.addEventListener('hashchange', () => syncPortfolioFromHash(true));
+
+  const freelanceFilterButtons = document.querySelectorAll('[data-freelance-filter-tag]');
+  const freelanceCards = document.querySelectorAll('[data-freelance-card]');
+  const freelanceEmptyNotice = document.getElementById('freelance-empty-filter');
+  const freelanceCountStatus = document.getElementById('freelance-count-status');
+
+  freelanceFilterButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const selected = button.getAttribute('data-freelance-filter-tag') || 'all';
+      freelanceFilterButtons.forEach((btn) => {
+        btn.setAttribute('aria-pressed', btn === button ? 'true' : 'false');
+      });
+
+      let visibleCount = 0;
+      freelanceCards.forEach((card) => {
+        const rawTags = card.getAttribute('data-tags') || '';
+        const tags = rawTags.split(',').filter(Boolean);
+        const matches = selected === 'all' || tags.includes(selected);
+        card.classList.toggle('hidden', !matches);
+        if (matches) visibleCount += 1;
+      });
+
+      if (freelanceCountStatus) {
+        const prefix = freelanceCountStatus.getAttribute('data-prefix') || 'Showing';
+        const connector = freelanceCountStatus.getAttribute('data-connector') || 'of';
+        const unit = freelanceCountStatus.getAttribute('data-unit') || 'projects';
+        const total = freelanceCountStatus.getAttribute('data-total') || String(freelanceCards.length);
+        freelanceCountStatus.textContent = `${prefix} ${visibleCount} ${connector} ${total} ${unit}`;
+      }
+
+      if (freelanceEmptyNotice) {
+        freelanceEmptyNotice.classList.toggle('hidden', visibleCount > 0);
+      }
+    });
+  });
+
+  const freelanceModals = Array.from(
+    document.querySelectorAll<HTMLDialogElement>('[data-freelance-modal]'),
+  );
+
+  document.querySelectorAll('[data-open-freelance]').forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      const slug = trigger.getAttribute('data-open-freelance');
+      const dialog = freelanceModals.find(
+        (el) => el.getAttribute('data-freelance-modal') === slug,
+      );
+      if (dialog) {
+        dialog.showModal();
+      }
+    });
+  });
+
+  freelanceModals.forEach((dialog) => {
+    const closeBtn = dialog.querySelector('[data-close-freelance-modal]');
+    closeBtn?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) {
+        dialog.close();
+      }
+    });
+  });
+
+  function initContactCopyButtons() {
+    const copyButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-copy-email]'));
+    if (copyButtons.length === 0) return;
+
+    const statusEl = document.getElementById('contact-copy-status');
+    const resetTimers = new WeakMap<HTMLButtonElement, number>();
+
+    const writeToClipboard = async (text: string): Promise<boolean> => {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Fallback below for non-secure origins or restricted clipboard permissions
+        }
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } catch {
+        copied = false;
+      }
+      document.body.removeChild(textarea);
+      return copied;
+    };
+
+    copyButtons.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const email = btn.getAttribute('data-copy-email') || '';
+        if (!email) return;
+
+        const copied = await writeToClipboard(email);
+        if (!copied) return;
+
+        const defaultText = btn.getAttribute('data-copy-default') || 'Copy';
+        const doneText = btn.getAttribute('data-copy-done') || 'Copied';
+        const announceText = btn.getAttribute('data-copy-announce') || doneText;
+        const labelEl = btn.querySelector<HTMLElement>('[data-copy-label]');
+        const copyIcon = btn.querySelector<SVGElement>('.contact-copy-icon');
+        const checkIcon = btn.querySelector<SVGElement>('.contact-check-icon');
+
+        if (labelEl) labelEl.textContent = doneText;
+        copyIcon?.classList.add('hidden');
+        checkIcon?.classList.remove('hidden');
+        btn.classList.add('border-[var(--accent)]', 'text-[var(--accent)]');
+        if (statusEl) statusEl.textContent = announceText;
+
+        const prevTimer = resetTimers.get(btn);
+        if (prevTimer) window.clearTimeout(prevTimer);
+
+        const nextTimer = window.setTimeout(() => {
+          if (labelEl) labelEl.textContent = defaultText;
+          copyIcon?.classList.remove('hidden');
+          checkIcon?.classList.add('hidden');
+          btn.classList.remove('border-[var(--accent)]', 'text-[var(--accent)]');
+        }, 1800);
+        resetTimers.set(btn, nextTimer);
+      });
+    });
+  }
+
+  initContactCopyButtons();
+</script>
+
+<style>
+  /* Ambient multi-language hero code background */
+  .hero-code-bg {
+    opacity: 0.14;
+    transition: opacity 280ms ease;
+  }
+  :global(.dark) .hero-code-bg {
+    opacity: 0.18;
+  }
+  .hero-code-bg.is-switching,
+  :global(.dark) .hero-code-bg.is-switching {
+    opacity: 0;
+  }
+  @media (min-width: 1024px) {
+    .hero-code-frame {
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.4) 26%, black 60%);
+      mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.4) 26%, black 60%);
+    }
+  }
+  .hero-code-caret {
+    animation: hero-caret-blink 0.9s steps(1, end) infinite;
+  }
+
+  /* Hero digital telemetry & blinking terminal caret */
+  .hero-cursor {
+    animation: hero-caret-blink 1.05s steps(1, end) infinite;
+  }
+  .hero-pulse-dot {
+    animation: hero-caret-blink 1.6s steps(1, end) infinite;
+  }
+  .hero-step-btn[aria-pressed='true'] {
+    border-color: var(--accent);
+    background-color: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .hero-progress-fill {
+    transform: scaleX(0);
+  }
+  .hero-progress-fill.is-running {
+    animation-name: hero-scan-progress;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+  @keyframes hero-caret-blink {
+    0%, 54% {
+      opacity: 1;
+    }
+    55%, 100% {
+      opacity: 0;
+    }
+  }
+  @keyframes hero-scan-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-cursor,
+    .hero-pulse-dot,
+    .hero-progress-fill,
+    .hero-code-caret {
+      animation: none !important;
+    }
+  }
+
+  /* Light mode: light monograph portfolio band (#EEEEEE) */
+  .project-filter-pill {
+    border-color: rgba(34, 40, 49, 0.18);
+    background-color: rgba(255, 255, 255, 0.72);
+    color: #393e46;
+  }
+  .project-filter-pill:hover {
+    border-color: rgba(34, 40, 49, 0.45);
+    background-color: #ffffff;
+    color: #222831;
+  }
+  .project-filter-pill[aria-pressed='true'] {
+    border-color: #222831;
+    background-color: #222831;
+    color: #ffd369;
+    font-weight: 600;
+  }
+
+  /* Dark mode: obsidian portfolio band (#222831) */
+  :global(.dark) .project-filter-pill {
+    border-color: rgba(238, 238, 238, 0.18);
+    background-color: #2b313b;
+    color: #d4d8df;
+  }
+  :global(.dark) .project-filter-pill:hover {
+    border-color: rgba(255, 211, 105, 0.65);
+    background-color: #393e46;
+    color: #eeeeee;
+  }
+  :global(.dark) .project-filter-pill[aria-pressed='true'] {
+    border-color: #ffd369;
+    background-color: #ffd369;
+    color: #222831;
+    font-weight: 600;
+  }
+
+  /* View switcher (Grid / List) */
+  .project-view-btn {
+    color: var(--text-secondary);
+    background-color: transparent;
+  }
+  .project-view-btn:hover {
+    color: var(--text-primary);
+  }
+  .project-view-btn[aria-pressed='true'] {
+    background-color: #222831;
+    color: #ffd369;
+    font-weight: 600;
+  }
+  :global(.dark) .project-view-btn[aria-pressed='true'] {
+    background-color: #ffd369;
+    color: #222831;
+    font-weight: 600;
+  }
+
+  /* Portfolio category segmented switcher (Main vs Freelance) */
+  .portfolio-tab-container {
+    border-color: rgba(34, 40, 49, 0.18);
+    background-color: rgba(255, 255, 255, 0.72);
+  }
+  :global(.dark) .portfolio-tab-container {
+    border-color: rgba(238, 238, 238, 0.18);
+    background-color: #2b313b;
+  }
+  .portfolio-tab-btn {
+    color: #393e46;
+    background-color: transparent;
+  }
+  .portfolio-tab-btn:hover {
+    color: #222831;
+  }
+  .portfolio-tab-btn[aria-selected='true'] {
+    background-color: #222831;
+    color: #ffd369;
+    font-weight: 600;
+  }
+  :global(.dark) .portfolio-tab-btn {
+    color: #d4d8df;
+  }
+  :global(.dark) .portfolio-tab-btn:hover {
+    color: #eeeeee;
+  }
+  :global(.dark) .portfolio-tab-btn[aria-selected='true'] {
+    background-color: #ffd369;
+    color: #222831;
+    font-weight: 600;
+  }
+
+  /* Full-width 12-column list layout mode */
+  #projects-grid[data-view='list'] {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  #projects-grid[data-view='list'] :global(.project-card) {
+    grid-column: 1 / -1;
+    padding: 1.125rem 1.25rem;
+  }
+  #projects-grid[data-view='list'] :global(.project-card-media) {
+    width: 9.25rem;
+    flex-shrink: 0;
+    margin-bottom: 0.875rem;
+  }
+  #projects-grid[data-view='list'] :global(.project-card-thumb) {
+    aspect-ratio: 1 / 1;
+  }
+  #projects-grid[data-view='list'] :global(.project-card-summary) {
+    display: block;
+    -webkit-line-clamp: unset;
+    max-width: 72ch;
+  }
+  #projects-grid[data-view='list'] :global(.project-card-footer) {
+    margin-top: 1rem;
+    padding-top: 0.625rem;
+  }
+
+  @media (min-width: 768px) {
+    #projects-grid[data-view='list'] :global(.project-card:not(.hidden)) {
+      display: grid;
+      grid-template-columns: 9.25rem minmax(0, 1fr);
+      gap: 1.375rem;
+      align-items: center;
+    }
+    #projects-grid[data-view='list'] :global(.project-card-media) {
+      width: 9.25rem;
+      margin-bottom: 0;
+      align-self: center;
+    }
+    #projects-grid[data-view='list'] :global(.project-card-body) {
+      min-width: 0;
+    }
+    #projects-grid[data-view='list'] :global(.project-card-footer) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    #projects-grid[data-view='list'] :global(.project-card-tags) {
+      margin-bottom: 0;
+    }
+  }
+</style>

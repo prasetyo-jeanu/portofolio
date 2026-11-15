@@ -1,0 +1,67 @@
+{
+  "id": "scrum-hr-system",
+  "project_name": "Scrum-Based HR Research Application",
+  "category": "hr-system",
+  "featured": false,
+  "sort_order": 14,
+  "is_confidential": false,
+  "status": "published",
+  "tech_stack_tags": [
+    "PHP",
+    "CodeIgniter",
+    "MySQL",
+    "Bootstrap"
+  ],
+  "image": {
+    "file": "scrum-hr-system.webp",
+    "width": 640,
+    "height": 640,
+    "aspect_ratio": "1:1",
+    "alt": {
+      "en": "Isometric HR platform translating research into employee goals, sprint planning, team coordination, and review workflows in charcoal and gold.",
+      "id": "Ilustrasi isometrik platform SDM berbasis Scrum untuk target karyawan, perencanaan sprint, koordinasi tim, dan evaluasi berkala."
+    }
+  },
+  "translations": {
+    "en": {
+      "title": "Turning Scrum-Based HR Research into Software",
+      "slug": "scrum-hr-system",
+      "role": "Full Stack Developer (Core Architecture & Backend)",
+      "summary": "Translated executive Scrum-HR research into linked employee goal-setting, sprint planning, and configurable review workflows.",
+      "portfolio_copy": [
+        {
+          "label": "What I Built",
+          "text": "Designed and built a Scrum-based HR application with CodeIgniter, MySQL, and Bootstrap, translating the CEO’s research into employee goals, sprint planning, and review workflows."
+        },
+        {
+          "label": "My Approach",
+          "text": "Modeled goals, sprint cycles, and feedback as linked records, using configurable review criteria to keep the research framework adaptable and progress traceable."
+        },
+        {
+          "label": "Impact",
+          "text": "Centralized employee commitments, sprint progress, and review history, giving managers a practical way to apply the research framework and coordinate teams."
+        }
+      ]
+    },
+    "id": {
+      "title": "Menerjemahkan Riset HR Berbasis Scrum Menjadi Aplikasi",
+      "slug": "scrum-hr-system",
+      "role": "Full Stack Developer (Arsitektur Inti & Backend)",
+      "summary": "Menerjemahkan hasil riset CEO mengenai Scrum-HR menjadi aplikasi yang mengintegrasikan penetapan target karyawan, perencanaan sprint, dan alur evaluasi yang dapat dikonfigurasi.",
+      "portfolio_copy": [
+        {
+          "label": "Apa yang dibangun",
+          "text": "Merancang dan membangun aplikasi HR berbasis Scrum menggunakan CodeIgniter, MySQL, dan Bootstrap. Saya menerjemahkan hasil riset CEO menjadi fitur pengelolaan target karyawan, perencanaan sprint, dan proses evaluasi kinerja."
+        },
+        {
+          "label": "Pendekatan teknis",
+          "text": "Memodelkan target, siklus sprint, dan umpan balik sebagai data yang saling terhubung. Saya juga menerapkan kriteria evaluasi yang dapat dikonfigurasi agar kerangka kerja hasil riset tetap fleksibel dan perkembangan setiap karyawan dapat dipantau dengan jelas."
+        },
+        {
+          "label": "Dampak",
+          "text": "Memusatkan komitmen karyawan, perkembangan sprint, dan riwayat evaluasi dalam satu aplikasi. Sistem ini membantu manajer menerapkan kerangka kerja hasil riset secara lebih praktis sekaligus mempermudah koordinasi tim."
+        }
+      ]
+    }
+  }
+}

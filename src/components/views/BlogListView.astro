@@ -1,0 +1,183 @@
+---
+import type { Locale } from '../../db/schema';
+import { getPublishedPostsByLocale } from '../../lib/content-queries';
+import { getTranslations, getPostUrl } from '../../lib/i18n';
+import { buildAbsoluteUrl, buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from '../../lib/seo';
+import { getSiteSettings } from '../../lib/settings';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import Breadcrumb from '../Breadcrumb.astro';
+import PostCard from '../PostCard.astro';
+
+export interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = getTranslations(locale);
+const settings = await getSiteSettings();
+const posts = await getPublishedPostsByLocale(locale);
+
+const allTags = Array.from(new Set(posts.flatMap((post) => post.data.tags))).slice(0, 14);
+const canonicalPath = `/${locale}/blog/`;
+const alternatePath = locale === 'id' ? '/en/blog/' : '/id/blog/';
+
+const hreflangs = [
+  { locale: 'id' as const, url: buildAbsoluteUrl('/id/blog/') },
+  { locale: 'en' as const, url: buildAbsoluteUrl('/en/blog/') },
+  { locale: 'x-default' as const, url: buildAbsoluteUrl('/en/blog/') },
+];
+
+const jsonLd = [
+  buildCollectionPageJsonLd({
+    name: `${t.blog.title} — ${settings.siteName}`,
+    description: t.blog.subtitle,
+    url: buildAbsoluteUrl(canonicalPath),
+    locale,
+    items: posts.map((post) => ({
+      name: post.data.title,
+      url: getPostUrl(locale, post.data.slug),
+    })),
+  }),
+  buildBreadcrumbJsonLd([
+    { name: t.projects.breadcrumbsHome, url: locale === 'id' ? '/id/' : '/' },
+    { name: t.nav.blog, url: canonicalPath },
+  ]),
+];
+
+const tagBtnBase =
+  'cursor-pointer rounded border px-3 py-1 font-mono text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
+const tagBtnActive =
+  'border-[var(--accent)] bg-[var(--accent-fill)] text-[var(--accent-ink)] font-semibold';
+const tagBtnInactive =
+  'border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)]';
+---
+
+<PublicLayout
+  locale={locale}
+  title={`${t.blog.title} — ${settings.siteName}`}
+  description={t.blog.subtitle}
+  canonicalPath={canonicalPath}
+  ogImage="/og-default.png"
+  hreflangs={hreflangs}
+  alternateSwitcherUrl={alternatePath}
+  settings={settings}
+  jsonLd={jsonLd}
+>
+  <section class="border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+    <div class="mx-auto max-w-[1376px] px-5 py-12 sm:px-10 lg:py-14">
+      <Breadcrumb
+        items={[
+          { label: t.projects.breadcrumbsHome, href: `/${locale}/` },
+          { label: t.nav.blog },
+        ]}
+      />
+
+      <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 class="font-display text-3xl font-bold uppercase tracking-[-0.02em] text-[var(--text-primary)] sm:text-4xl">
+            <span class="monograph-num mr-2.5 text-[var(--accent)]">01</span>
+            {t.blog.title}
+          </h1>
+          <p class="mt-2.5 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)]">
+            {t.blog.subtitle}
+          </p>
+        </div>
+
+        <a
+          href={locale === 'id' ? '/id/cari' : '/en/search'}
+          class="inline-flex min-h-[38px] items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3.5 py-1.5 font-mono text-xs text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          <span>{t.nav.search}</span>
+          <span aria-hidden="true">-&gt;</span>
+        </a>
+      </div>
+
+      {allTags.length > 0 && (
+        <div class="mt-7 flex flex-wrap items-center gap-2 border-t border-[var(--border-subtle)] pt-5" role="group" aria-label={t.blog.allTags}>
+          <button
+            type="button"
+            data-blog-tag="all"
+            class={`${tagBtnBase} ${tagBtnActive}`}
+          >
+            {t.blog.allTags}
+          </button>
+          {allTags.map((tag) => (
+            <button
+              type="button"
+              data-blog-tag={tag.toLowerCase()}
+              class={`${tagBtnBase} ${tagBtnInactive}`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="bg-[var(--bg-secondary)]">
+    <div class="mx-auto max-w-[1376px] px-5 py-12 sm:px-10 lg:py-14">
+      {posts.length > 0 ? (
+        <>
+          <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <PostCard
+                locale={locale}
+                title={post.data.title}
+                slug={post.data.slug}
+                summary={post.data.summary}
+                category={post.data.category}
+                tags={post.data.tags}
+                readingTimeMinutes={post.data.readingTimeMinutes}
+                publishedAt={post.data.publishedAt}
+              />
+            ))}
+          </div>
+          <p
+            id="blog-empty-filter"
+            class="mt-6 hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-6 text-center font-mono text-sm text-[var(--text-secondary)]"
+          >
+            {t.projects.noFilterMatch}
+          </p>
+        </>
+      ) : (
+        <div class="rounded-md border border-[var(--border-ledger)] bg-[var(--bg-primary)] p-8 font-mono text-sm text-[var(--text-secondary)]">
+          {t.blog.emptyState}
+        </div>
+      )}
+    </div>
+  </section>
+</PublicLayout>
+
+<script>
+  const activeCls = ['border-[var(--accent)]', 'bg-[var(--accent-fill)]', 'text-[var(--accent-ink)]', 'font-semibold'];
+  const inactiveCls = ['border-[var(--border-subtle)]', 'bg-[var(--bg-secondary)]', 'text-[var(--text-secondary)]', 'hover:border-[var(--accent)]', 'hover:text-[var(--text-primary)]'];
+
+  const buttons = document.querySelectorAll('[data-blog-tag]');
+  const cards = document.querySelectorAll('[data-post-card]');
+  const emptyFilter = document.getElementById('blog-empty-filter');
+
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-blog-tag') || 'all';
+      buttons.forEach((b) => {
+        b.classList.remove(...activeCls);
+        b.classList.add(...inactiveCls);
+      });
+      btn.classList.remove(...inactiveCls);
+      btn.classList.add(...activeCls);
+
+      let visible = 0;
+      cards.forEach((card) => {
+        const cardTags = (card.getAttribute('data-tags') || '').split(',').filter(Boolean);
+        const match = tag === 'all' || cardTags.includes(tag);
+        card.classList.toggle('hidden', !match);
+        if (match) visible += 1;
+      });
+
+      if (emptyFilter) {
+        emptyFilter.classList.toggle('hidden', visible > 0);
+      }
+    });
+  });
+</script>

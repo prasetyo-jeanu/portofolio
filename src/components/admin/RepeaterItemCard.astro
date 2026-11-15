@@ -1,0 +1,68 @@
+---
+import RepeaterFieldInput, { type RepeaterFieldDef } from './RepeaterFieldInput.astro';
+
+interface Props {
+  fields: RepeaterFieldDef[];
+  locale: 'id' | 'en';
+  headerGridClass: string;
+  indexLabel?: string;
+  item?: Record<string, string>;
+}
+
+const {
+  fields,
+  locale,
+  headerGridClass,
+  indexLabel = '#01',
+  item,
+} = Astro.props;
+---
+
+<div
+  data-repeater-item
+  class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 space-y-3 transition-shadow"
+>
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        data-drag-handle
+        title={locale === 'id' ? 'Seret untuk mengubah urutan' : 'Drag to reorder'}
+        aria-label={locale === 'id' ? 'Seret untuk mengubah urutan' : 'Drag to reorder'}
+        class="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1 text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] cursor-grab active:cursor-grabbing touch-none select-none"
+      >
+        <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="5.5" cy="3.5" r="1.25" />
+          <circle cx="10.5" cy="3.5" r="1.25" />
+          <circle cx="5.5" cy="8" r="1.25" />
+          <circle cx="10.5" cy="8" r="1.25" />
+          <circle cx="5.5" cy="12.5" r="1.25" />
+          <circle cx="10.5" cy="12.5" r="1.25" />
+        </svg>
+        <span data-item-index class="font-mono text-xs font-semibold text-[var(--accent)]">
+          {indexLabel}
+        </span>
+      </button>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <button type="button" data-item-move="up" title="Move up" class="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] cursor-pointer">&uarr;</button>
+      <button type="button" data-item-move="down" title="Move down" class="rounded-md border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] cursor-pointer">&darr;</button>
+      <button type="button" data-item-remove title="Remove item" class="rounded-md border border-red-500/30 px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/10 cursor-pointer">Hapus</button>
+    </div>
+  </div>
+  <div class={headerGridClass}>
+    {fields.map((field) => (
+      <RepeaterFieldInput field={field} locale={locale} value={item?.[field.name] || ''} />
+    ))}
+  </div>
+</div>
+
+<style>
+  [data-repeater-item][data-dragging='true'] {
+    border-color: var(--accent);
+    background-color: var(--bg-elevated);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--accent);
+    opacity: 0.96;
+    transform: scale(1.01);
+  }
+</style>

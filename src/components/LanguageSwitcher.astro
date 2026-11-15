@@ -1,0 +1,36 @@
+---
+import type { Locale } from '../db/schema';
+import { getLocalizedSectionPath, getTranslations } from '../lib/i18n';
+
+interface Props {
+  locale: Locale;
+  alternateUrl?: string | null;
+}
+
+const { locale, alternateUrl } = Astro.props;
+const targetLocale: Locale = locale === 'id' ? 'en' : 'id';
+const t = getTranslations(locale);
+const href = alternateUrl || getLocalizedSectionPath(targetLocale, 'home');
+
+const activeClass =
+  'inline-flex h-5.5 min-w-[28px] items-center justify-center rounded-full bg-[#222831] px-2 text-[#EEEEEE] dark:text-[#FFD369] dark:ring-1 dark:ring-[#FFD369]/40';
+const inactiveClass =
+  'relative inline-flex h-5.5 min-w-[28px] items-center justify-center rounded-full px-2 text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] after:absolute after:-inset-y-2.5 after:inset-x-0 sm:after:hidden';
+---
+
+<nav
+  aria-label={t.languageLabel}
+  class="inline-flex h-7 items-center gap-0.5 rounded-full border border-[var(--border-subtle)] bg-[#393E46]/15 p-0.5 font-mono text-[11px] font-semibold tracking-[0.06em] dark:border-[#EEEEEE]/25 dark:bg-[#393E46]/70"
+>
+  {locale === 'id' ? (
+    <>
+      <span class={activeClass} aria-current="page">ID</span>
+      <a href={href} hreflang="en" lang="en" class={inactiveClass}>EN</a>
+    </>
+  ) : (
+    <>
+      <a href={href} hreflang="id" lang="id" class={inactiveClass}>ID</a>
+      <span class={activeClass} aria-current="page">EN</span>
+    </>
+  )}
+</nav>

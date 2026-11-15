@@ -1,0 +1,100 @@
+---
+export const prerender = false;
+import { desc } from 'drizzle-orm';
+import { db } from '../../../db';
+import { urlRedirects } from '../../../db/schema';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+const redirects = await db.select().from(urlRedirects).orderBy(desc(urlRedirects.createdAt));
+---
+
+<AdminLayout title="URL Redirects" activeNav="redirects">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-[var(--text-primary)]">URL Redirects (301)</h1>
+    <p class="text-sm text-[var(--text-muted)]">Automatically created when published slugs are renamed, or add manual redirects below.</p>
+  </div>
+
+  <form id="redirect-form" class="mb-8 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
+    <div class="grid gap-4 sm:grid-cols-4">
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Locale</label>
+        <select id="r-locale" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
+          <option value="id">ID</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Type</label>
+        <select id="r-type" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
+          <option value="post">Post</option>
+          <option value="project">Project</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">From Path</label>
+        <input id="r-from" type="text" required placeholder="/id/blog/old-slug/" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 font-mono text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">To Path</label>
+        <input id="r-to" type="text" required placeholder="/id/blog/new-slug/" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 font-mono text-sm" />
+      </div>
+    </div>
+    <button type="submit" class="mt-4 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+      Add Redirect
+    </button>
+  </form>
+
+  <div class="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+    {redirects.length > 0 ? (
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/60 text-xs uppercase text-[var(--text-muted)]">
+          <tr>
+            <th class="px-4 py-3">From</th>
+            <th class="px-4 py-3">To</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[var(--border-subtle)]">
+          {redirects.map((r) => (
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs">{r.fromPath}</td>
+              <td class="px-4 py-3 font-mono text-xs text-[var(--accent)]">{r.toPath}</td>
+              <td class="px-4 py-3 text-xs">{r.statusCode}</td>
+              <td class="px-4 py-3 text-right">
+                <button type="button" data-del-redirect={r.id} class="text-xs text-red-400 hover:underline cursor-pointer">Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : (
+      <div class="p-8 text-center text-sm text-[var(--text-muted)]">No redirects recorded yet.</div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  document.getElementById('redirect-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const val = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLSelectElement).value;
+    const { error } = await actions.createRedirect({
+      locale: val('r-locale') as 'id' | 'en',
+      contentType: val('r-type') as 'post' | 'project',
+      fromPath: val('r-from'),
+      toPath: val('r-to'),
+    });
+    if (!error) window.location.reload();
+    else alert(error.message);
+  });
+
+  document.querySelectorAll('[data-del-redirect]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = Number((btn as HTMLElement).dataset.delRedirect);
+      const { error } = await actions.deleteRedirect({ id });
+      if (!error) window.location.reload();
+    });
+  });
+</script>

@@ -1,0 +1,349 @@
+---
+export const prerender = false;
+import { desc, eq } from 'drizzle-orm';
+import { db } from '../../../db';
+import { media, projects, projectTags, projectTranslations, tags } from '../../../db/schema';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+import CodeMirrorEditor from '../../../components/admin/CodeMirrorEditor.astro';
+
+const rawId = Astro.params.id;
+const isNew = rawId === 'new';
+const projectId = isNew ? null : Number(rawId);
+
+if (!isNew && (!projectId || Number.isNaN(projectId))) {
+  return Astro.redirect('/admin/projects');
+}
+
+let projRow: typeof projects.$inferSelect | null = null;
+let idTrans: typeof projectTranslations.$inferSelect | null = null;
+let enTrans: typeof projectTranslations.$inferSelect | null = null;
+let tagNames: string[] = [];
+
+if (projectId) {
+  const found = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  if (found.length === 0) return Astro.redirect('/admin/projects');
+  projRow = found[0];
+
+  const transRows = await db.select().from(projectTranslations).where(eq(projectTranslations.projectId, projectId));
+  idTrans = transRows.find((t) => t.locale === 'id') || null;
+  enTrans = transRows.find((t) => t.locale === 'en') || null;
+
+  const tagRows = await db
+    .select({ name: tags.name })
+    .from(projectTags)
+    .innerJoin(tags, eq(projectTags.tagId, tags.id))
+    .where(eq(projectTags.projectId, projectId));
+  tagNames = tagRows.map((r) => r.name);
+}
+
+const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(50);
+---
+
+<AdminLayout title={isNew ? 'New Project' : `Edit Project #${projectId}`} activeNav="projects">
+  <AdminStickyHeader
+    title={isNew ? 'Create Project Case Study' : `Edit Project #${projectId}`}
+    backHref="/admin/projects"
+    backLabel="Back to Projects"
+    alertId="proj-alert"
+  >
+    <Fragment slot="actions">
+      <button type="button" id="proj-template-btn" class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] cursor-pointer">
+        Insert Case Study Template
+      </button>
+      <button type="button" id="proj-preview-btn" class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--accent)] cursor-pointer">
+        Preview MDX
+      </button>
+      <button type="button" id="proj-save-btn" class="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-black hover:opacity-90 cursor-pointer">
+        Save Project
+      </button>
+    </Fragment>
+  </AdminStickyHeader>
+
+  <form id="proj-form" data-project-id={projectId ?? ''} class="space-y-6">
+    <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 space-y-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Shared Project Metadata</h2>
+      <div class="grid gap-4 sm:grid-cols-6">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Category</label>
+          <input id="proj-category" type="text" value={projRow?.category || 'fullstack'} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+        <div class="sm:col-span-3">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Cover Image</label>
+          <select id="proj-cover" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
+            <option value="">No cover image</option>
+            {mediaList.map((m) => (
+              <option value={m.id} selected={projRow?.coverMediaId === m.id}>{m.filename}</option>
+            ))}
+          </select>
+        </div>
+        <div class="sm:col-span-1">
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Sort Order</label>
+          <input id="proj-sort" type="number" value={projRow?.sortOrder ?? 0} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tech Stack Tags (comma separated)</label>
+        <input id="proj-tags" type="text" value={tagNames.join(', ')} placeholder="TypeScript, Node.js, PostgreSQL" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-center">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Live Demo URL</label>
+          <input id="proj-demo" type="url" value={projRow?.demoUrl || ''} placeholder="https://..." class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Public Repository URL</label>
+          <input id="proj-repo" type="url" value={projRow?.repoUrl || ''} placeholder="https://gitlab.com/..." class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        </div>
+        <div class="pt-4">
+          <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input id="proj-featured" type="checkbox" checked={projRow?.featured || false} class="h-4 w-4 accent-[var(--accent)]" />
+            Featured Project
+          </label>
+        </div>
+        <div class="pt-4">
+          <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input id="proj-confidential" type="checkbox" checked={projRow?.isConfidential || false} class="h-4 w-4 accent-[var(--accent)]" />
+            Confidential / NDA (Hide repo)
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
+      <button type="button" data-proj-tab="id" class="rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer">
+        Indonesian (ID)
+      </button>
+      <button type="button" data-proj-tab="en" class="rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer">
+        English (EN)
+      </button>
+    </div>
+
+    <!-- ID Pane -->
+    <section data-proj-pane="id" class="space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Title (ID)</label>
+          <input id="id-title" type="text" value={idTrans?.title || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Role (ID)</label>
+          <input id="id-role" type="text" value={idTrans?.role || ''} placeholder="Fullstack Developer" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Status (ID)</label>
+          <select id="id-status" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">
+            <option value="draft" selected={!idTrans || idTrans.status === 'draft'}>Draft</option>
+            <option value="published" selected={idTrans?.status === 'published'}>Published</option>
+            <option value="archived" selected={idTrans?.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Slug (ID)</label>
+          <input id="id-slug" type="text" value={idTrans?.slug || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Title (ID, optional)</label>
+          <input id="id-seo-title" type="text" value={idTrans?.seoTitle || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Summary (ID)</label>
+          <textarea id="id-summary" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.summary || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Meta Description (ID, optional)</label>
+          <textarea id="id-seo-desc" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{idTrans?.seoDescription || ''}</textarea>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Case Study MDX (ID)</label>
+        <CodeMirrorEditor editorId="cm-proj-id" initialValue={idTrans?.contentMdx || ''} />
+      </div>
+    </section>
+
+    <!-- EN Pane -->
+    <section data-proj-pane="en" class="hidden space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Title (EN)</label>
+          <input id="en-title" type="text" value={enTrans?.title || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Role (EN)</label>
+          <input id="en-role" type="text" value={enTrans?.role || ''} placeholder="Fullstack Developer" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Status (EN)</label>
+          <select id="en-status" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">
+            <option value="draft" selected={!enTrans || enTrans.status === 'draft'}>Draft</option>
+            <option value="published" selected={enTrans?.status === 'published'}>Published</option>
+            <option value="archived" selected={enTrans?.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Slug (EN)</label>
+          <input id="en-slug" type="text" value={enTrans?.slug || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Title (EN, optional)</label>
+          <input id="en-seo-title" type="text" value={enTrans?.seoTitle || ''} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm" />
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Summary (EN)</label>
+          <textarea id="en-summary" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.summary || ''}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">SEO Meta Description (EN, optional)</label>
+          <textarea id="en-seo-desc" rows="2" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-sm">{enTrans?.seoDescription || ''}</textarea>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Case Study MDX (EN)</label>
+        <CodeMirrorEditor editorId="cm-proj-en" initialValue={enTrans?.contentMdx || ''} />
+      </div>
+    </section>
+  </form>
+
+  <section id="proj-preview-panel" class="hidden mt-8 rounded-2xl border border-[var(--accent)]/40 bg-[var(--bg-elevated)] p-6">
+    <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--accent)]">Safe MDX Preview</h2>
+      <button type="button" id="close-proj-preview" class="text-xs text-[var(--text-muted)] cursor-pointer">Close</button>
+    </div>
+    <div id="proj-preview-content" class="prose-tech"></div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  let activeLocale: 'id' | 'en' = 'id';
+  const tabs = document.querySelectorAll('[data-proj-tab]');
+  const panes = document.querySelectorAll('[data-proj-pane]');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const loc = (tab as HTMLElement).dataset.projTab as 'id' | 'en';
+      activeLocale = loc;
+      tabs.forEach((t) => {
+        const isCurrent = (t as HTMLElement).dataset.projTab === loc;
+        t.className = isCurrent
+          ? 'rounded-lg bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] cursor-pointer'
+          : 'rounded-lg px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer';
+      });
+      panes.forEach((p) => {
+        p.classList.toggle('hidden', (p as HTMLElement).dataset.projPane !== loc);
+      });
+    });
+  });
+
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)?.value || '';
+  const alertBox = document.getElementById('proj-alert');
+  const showAlert = (msg: string, isErr: boolean) => {
+    if (!alertBox) return;
+    alertBox.textContent = msg;
+    alertBox.className = isErr
+      ? 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-red-500/15 text-red-400'
+      : 'mt-3 rounded-xl px-4 py-2.5 text-sm bg-emerald-500/15 text-emerald-400';
+  };
+
+  document.getElementById('proj-template-btn')?.addEventListener('click', () => {
+    const editorId = activeLocale === 'id' ? 'cm-proj-id' : 'cm-proj-en';
+    const tpl = activeLocale === 'id'
+      ? `## Ringkasan Proyek\n\n## Permasalahan\n\n## Solusi & Arsitektur Sistem\n\n## Detail Implementasi\n\n## Tantangan Teknis\n\n## Fitur Utama\n\n- Fitur 1\n- Fitur 2\n\n## Hasil & Dampak\n\n## Pembelajaran\n`
+      : `## Project Overview\n\n## Problem Statement\n\n## Proposed Solution & System Architecture\n\n## Implementation Details\n\n## Technical Challenges\n\n## Key Features\n\n- Feature 1\n- Feature 2\n\n## Results & Outcomes\n\n## Lessons Learned\n`;
+    window.__cmEditors?.[editorId]?.insertSnippet(tpl);
+  });
+
+  document.getElementById('proj-save-btn')?.addEventListener('click', async () => {
+    const form = document.getElementById('proj-form') as HTMLElement;
+    const rawId = form.dataset.projectId;
+    const projectId = rawId ? Number(rawId) : null;
+
+    const payload = {
+      id: projectId,
+      category: val('proj-category') || 'fullstack',
+      featured: (document.getElementById('proj-featured') as HTMLInputElement).checked,
+      isConfidential: (document.getElementById('proj-confidential') as HTMLInputElement).checked,
+      demoUrl: val('proj-demo'),
+      repoUrl: val('proj-repo'),
+      coverMediaId: val('proj-cover') ? Number(val('proj-cover')) : null,
+      gallery: [],
+      sortOrder: Number(val('proj-sort') || 0),
+      tags: val('proj-tags').split(',').map((s) => s.trim()).filter(Boolean),
+      translations: {
+        id: {
+          title: val('id-title'),
+          slug: val('id-slug'),
+          role: val('id-role'),
+          summary: val('id-summary'),
+          contentMdx: window.__cmEditors?.['cm-proj-id']?.getValue() || '',
+          seoTitle: val('id-seo-title'),
+          seoDescription: val('id-seo-desc'),
+          ogImageUrl: '',
+          status: val('id-status') as 'draft' | 'published' | 'archived',
+        },
+        en: {
+          title: val('en-title'),
+          slug: val('en-slug'),
+          role: val('en-role'),
+          summary: val('en-summary'),
+          contentMdx: window.__cmEditors?.['cm-proj-en']?.getValue() || '',
+          seoTitle: val('en-seo-title'),
+          seoDescription: val('en-seo-desc'),
+          ogImageUrl: '',
+          status: val('en-status') as 'draft' | 'published' | 'archived',
+        },
+      },
+    };
+
+    const { data, error } = await actions.saveProject(payload);
+    if (error) {
+      showAlert(error.message || 'Failed to save project.', true);
+    } else {
+      window.__cmEditors?.['cm-proj-id']?.markClean();
+      window.__cmEditors?.['cm-proj-en']?.markClean();
+      showAlert('Project saved to SQLite! Remember to run Publish Static Site to update public pages.', false);
+      if (!projectId && data?.projectId) {
+        window.location.href = `/admin/projects/${data.projectId}`;
+      }
+    }
+  });
+
+  document.getElementById('proj-preview-btn')?.addEventListener('click', async () => {
+    const editorId = activeLocale === 'id' ? 'cm-proj-id' : 'cm-proj-en';
+    const mdx = window.__cmEditors?.[editorId]?.getValue() || '';
+    const { data, error } = await actions.previewMdx({ contentMdx: mdx });
+    const panel = document.getElementById('proj-preview-panel')!;
+    const contentEl = document.getElementById('proj-preview-content')!;
+    panel.classList.remove('hidden');
+
+    if (error) {
+      contentEl.innerHTML = `<p class="text-red-400">${error.message}</p>`;
+    } else if (data?.errors && data.errors.length > 0) {
+      contentEl.innerHTML = `<div class="rounded-xl bg-red-500/15 p-4 text-red-400"><strong>MDX Validation Errors:</strong><ul>${data.errors.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    } else {
+      contentEl.innerHTML = data?.html || '<p class="text-[var(--text-muted)]">Empty content.</p>';
+    }
+    panel.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.getElementById('close-proj-preview')?.addEventListener('click', () => {
+    document.getElementById('proj-preview-panel')?.classList.add('hidden');
+  });
+</script>

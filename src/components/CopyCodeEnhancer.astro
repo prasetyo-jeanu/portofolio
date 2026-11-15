@@ -1,0 +1,45 @@
+---
+import type { Locale } from '../db/schema';
+import { getTranslations } from '../lib/i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = getTranslations(locale);
+---
+
+<script define:vars={{ copyLabel: t.blog.copyCode, copiedLabel: t.blog.copiedCode }}>
+  function attachCopyButtons() {
+    document.querySelectorAll('.prose-tech pre').forEach((pre) => {
+      if (pre.dataset.copyAttached === 'true') return;
+      pre.dataset.copyAttached = 'true';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'relative group';
+      pre.parentNode?.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = copyLabel;
+      btn.className =
+        'absolute right-2.5 top-2.5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/90 px-2.5 py-1 text-[11px] font-mono text-[var(--text-secondary)] opacity-85 hover:opacity-100 hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition cursor-pointer';
+
+      btn.addEventListener('click', async () => {
+        const code = pre.querySelector('code')?.textContent || pre.textContent || '';
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.textContent = copiedLabel;
+          setTimeout(() => {
+            btn.textContent = copyLabel;
+          }, 1600);
+        } catch {}
+      });
+
+      wrapper.appendChild(btn);
+    });
+  }
+  attachCopyButtons();
+</script>

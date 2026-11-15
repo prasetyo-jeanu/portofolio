@@ -1,0 +1,14 @@
+---
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+}
+
+const { src, alt, caption } = Astro.props;
+---
+
+<figure class="mdx-figure">
+  <img src={src} alt={alt} loading="lazy" class="w-full rounded-xl border border-[var(--border-subtle)]" />
+  {caption && <figcaption class="mt-2 text-center text-xs text-[var(--text-muted)]">{caption}</figcaption>}
+</figure>

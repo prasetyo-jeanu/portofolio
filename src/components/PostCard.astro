@@ -1,0 +1,70 @@
+---
+import type { Locale } from '../db/schema';
+import { formatDate, getPostUrl, getTranslations } from '../lib/i18n';
+
+export interface Props {
+  locale: Locale;
+  title: string;
+  slug: string;
+  summary: string;
+  category: string;
+  tags: string[];
+  readingTimeMinutes: number;
+  publishedAt: Date;
+}
+
+const { locale, title, slug, summary, category, tags, readingTimeMinutes, publishedAt } = Astro.props;
+const t = getTranslations(locale);
+const postUrl = getPostUrl(locale, slug);
+---
+
+<article
+  class="group flex flex-col justify-between rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5 transition-colors duration-200 hover:border-[var(--accent)]"
+  data-post-card
+  data-tags={tags.join(',').toLowerCase()}
+>
+  <div>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2.5 font-mono text-[11px] text-[var(--text-muted)]">
+      <div class="flex items-center gap-2">
+        <time datetime={publishedAt.toISOString()} class="monograph-num">
+          {formatDate(publishedAt, locale)}
+        </time>
+        <span aria-hidden="true">/</span>
+        <span class="monograph-num">{readingTimeMinutes} {t.blog.readingTime}</span>
+      </div>
+      <span class="font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
+        {category}
+      </span>
+    </div>
+
+    <h3 class="font-display text-lg font-bold tracking-[-0.015em] text-[var(--text-primary)] transition-colors group-hover:text-[var(--accent)]">
+      <a href={postUrl} class="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+        {title}
+      </a>
+    </h3>
+
+    <p class="mt-2.5 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+      {summary}
+    </p>
+  </div>
+
+  <div class="mt-5 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3">
+    <div class="flex flex-wrap gap-1.5">
+      {tags.slice(0, 3).map((tag) => (
+        <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)]">
+          #{tag}
+        </span>
+      ))}
+    </div>
+    <a
+      href={postUrl}
+      class="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[var(--accent)] transition-colors hover:text-[var(--text-primary)]"
+    >
+      <span>{locale === 'id' ? 'Baca' : 'Read'}</span>
+      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 12h14"></path>
+        <path d="m12 5 7 7-7 7"></path>
+      </svg>
+    </a>
+  </div>
+</article>

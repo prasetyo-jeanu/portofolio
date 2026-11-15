@@ -1,0 +1,332 @@
+---
+import type { Locale } from '../db/schema';
+import { getLocalizedSectionPath, getTranslations } from '../lib/i18n';
+import { splitSiteNameTokens } from '../lib/settings';
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+interface Props {
+  locale: Locale;
+  siteName: string;
+  currentPath: string;
+  alternateUrl?: string | null;
+}
+
+const { locale, siteName, currentPath, alternateUrl } = Astro.props;
+const t = getTranslations(locale);
+
+const siteNameTokens = splitSiteNameTokens(siteName);
+const hasBrandTicker = siteNameTokens.length > 1;
+
+const navItems = [
+  { key: 'home', label: t.nav.home, href: getLocalizedSectionPath(locale, 'home') },
+  { key: 'about', label: t.nav.about, href: getLocalizedSectionPath(locale, 'about') },
+  { key: 'projects', label: t.nav.projects, href: getLocalizedSectionPath(locale, 'projects') },
+  { key: 'blog', label: t.nav.blog, href: getLocalizedSectionPath(locale, 'blog') },
+  { key: 'contact', label: t.nav.contact, href: getLocalizedSectionPath(locale, 'contact') },
+] as const;
+
+function isActive(href: string): boolean {
+  if (href.includes('#')) {
+    return false;
+  }
+  if (href === '/') {
+    return (
+      currentPath === '/' ||
+      currentPath === '/index.html' ||
+      currentPath === '/en/' ||
+      currentPath === '/en' ||
+      currentPath === '/en/index.html'
+    );
+  }
+  if (href === `/${locale}/`) {
+    return currentPath === href || currentPath === `/${locale}` || currentPath === `/${locale}/index.html`;
+  }
+  return currentPath.startsWith(href);
+}
+---
+
+<header class="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/95 backdrop-blur-sm">
+  <div class="mx-auto flex h-[58px] max-w-[1376px] items-center justify-between gap-2 px-5 sm:gap-4 sm:px-10">
+    <a
+      href={getLocalizedSectionPath(locale, 'home')}
+      aria-label={hasBrandTicker ? siteName : undefined}
+      class="flex min-w-0 items-center gap-2 sm:gap-3 font-display font-bold tracking-tight text-[var(--text-primary)] transition-colors hover:text-[var(--accent)] min-h-[44px] sm:min-h-0"
+    >
+      <span class="inline-flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-[3px] border border-[var(--text-primary)]/70 font-mono text-[11px] sm:text-xs font-semibold text-[var(--text-primary)]">
+        &lt;/&gt;
+      </span>
+      {hasBrandTicker ? (
+        <span
+          aria-hidden="true"
+          data-brand-ticker
+          class="relative inline-grid h-[1.35em] max-w-full overflow-hidden align-middle text-sm leading-[1.35] sm:text-lg"
+        >
+          {siteNameTokens.map((token, idx) => (
+            <span
+              data-brand-word
+              style={
+                idx === 0
+                  ? 'transform: translateY(0%); opacity: 1;'
+                  : 'transform: translateY(108%); opacity: 0;'
+              }
+              class="col-start-1 row-start-1 block truncate whitespace-nowrap will-change-transform"
+            >
+              {token}
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span class="truncate text-sm sm:text-lg">{siteName}</span>
+      )}
+    </a>
+
+    <nav aria-label="Main navigation" class="hidden md:flex items-center gap-7">
+      {navItems.map((item) => {
+        const active = isActive(item.href);
+        return (
+          <a
+            href={item.href}
+            data-nav-key={item.key}
+            data-nav-active={active ? 'true' : 'false'}
+            aria-current={active ? 'page' : undefined}
+            class="relative py-[18px] text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] data-[nav-active=true]:text-[var(--accent)] data-[nav-active=true]:after:absolute data-[nav-active=true]:after:bottom-0 data-[nav-active=true]:after:left-0 data-[nav-active=true]:after:right-0 data-[nav-active=true]:after:h-[2px] data-[nav-active=true]:after:bg-[var(--accent)]"
+          >
+            {item.label}
+          </a>
+        );
+      })}
+    </nav>
+
+    <div class="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+      <a
+        href={getLocalizedSectionPath(locale, 'search')}
+        aria-label={t.nav.search}
+        title={t.nav.search}
+        class="inline-flex h-11 w-9 sm:h-9 sm:w-9 items-center justify-center rounded text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
+      >
+        <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.3-4.3"></path>
+        </svg>
+      </a>
+
+      <LanguageSwitcher locale={locale} alternateUrl={alternateUrl} />
+      <ThemeToggle locale={locale} />
+
+      <button
+        type="button"
+        id="mobile-menu-btn"
+        aria-expanded="false"
+        aria-controls="mobile-nav-drawer"
+        aria-label="Toggle navigation menu"
+        class="inline-flex md:hidden h-11 w-10 items-center justify-center rounded border border-[var(--border-subtle)] bg-transparent text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] cursor-pointer"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div
+    id="mobile-nav-drawer"
+    class="hidden md:hidden border-t border-[var(--border-subtle)] bg-[var(--bg-primary)] px-5 py-4"
+  >
+    <nav aria-label="Mobile navigation" class="flex flex-col divide-y divide-[var(--border-subtle)]">
+      {navItems.map((item) => {
+        const active = isActive(item.href);
+        return (
+          <a
+            href={item.href}
+            data-nav-key={item.key}
+            data-nav-active={active ? 'true' : 'false'}
+            aria-current={active ? 'page' : undefined}
+            class="py-3 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] data-[nav-active=true]:text-[var(--accent)]"
+          >
+            {item.label}
+          </a>
+        );
+      })}
+    </nav>
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById('mobile-menu-btn');
+  const drawer = document.getElementById('mobile-nav-drawer');
+  if (btn && drawer) {
+    btn.addEventListener('click', () => {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      drawer.classList.toggle('hidden');
+    });
+    drawer.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        btn.setAttribute('aria-expanded', 'false');
+        drawer.classList.add('hidden');
+      });
+    });
+  }
+
+  function initBrandTicker() {
+    const ticker = document.querySelector<HTMLElement>('[data-brand-ticker]');
+    if (!ticker) return;
+    const words = Array.from(ticker.querySelectorAll<HTMLElement>('[data-brand-word]'));
+    if (words.length <= 1) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const DWELL_MS = 2600;
+    const SLIDE_TRANSITION = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease';
+    let currentIdx = 0;
+    let timerId = 0;
+    let paused = false;
+    const linkParent = ticker.closest('a');
+
+    const stepNext = () => {
+      const nextIdx = (currentIdx + 1) % words.length;
+      const goingDown = nextIdx < currentIdx;
+      const outgoing = words[currentIdx];
+      const incoming = words[nextIdx];
+
+      incoming.style.transition = 'none';
+      incoming.style.transform = goingDown ? 'translateY(-108%)' : 'translateY(108%)';
+      incoming.style.opacity = '0';
+      void incoming.offsetHeight;
+
+      outgoing.style.transition = SLIDE_TRANSITION;
+      incoming.style.transition = SLIDE_TRANSITION;
+
+      outgoing.style.transform = goingDown ? 'translateY(108%)' : 'translateY(-108%)';
+      outgoing.style.opacity = '0';
+      incoming.style.transform = 'translateY(0%)';
+      incoming.style.opacity = '1';
+
+      currentIdx = nextIdx;
+    };
+
+    const schedule = () => {
+      window.clearTimeout(timerId);
+      if (paused || document.hidden) return;
+      timerId = window.setTimeout(() => {
+        stepNext();
+        schedule();
+      }, DWELL_MS);
+    };
+
+    const setPaused = (nextPaused: boolean) => {
+      if (paused === nextPaused) return;
+      paused = nextPaused;
+      if (paused) {
+        window.clearTimeout(timerId);
+      } else {
+        schedule();
+      }
+    };
+
+    linkParent?.addEventListener('pointerenter', () => setPaused(true));
+    linkParent?.addEventListener('pointerleave', () => setPaused(false));
+    linkParent?.addEventListener('focusin', () => setPaused(true));
+    linkParent?.addEventListener('focusout', () => setPaused(false));
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        window.clearTimeout(timerId);
+      } else {
+        schedule();
+      }
+    });
+
+    schedule();
+  }
+
+  function initNavScrollSpy() {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-scroll-section]'));
+    if (sections.length === 0) return;
+
+    const navLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-nav-key]'));
+    if (navLinks.length === 0) return;
+
+    const headerEl = document.querySelector('header');
+    let currentActiveKey = '';
+    let rafId = 0;
+
+    const setActiveKey = (nextKey: string) => {
+      if (!nextKey || nextKey === currentActiveKey) return;
+      currentActiveKey = nextKey;
+
+      navLinks.forEach((link) => {
+        const isMatch = link.getAttribute('data-nav-key') === nextKey;
+        link.setAttribute('data-nav-active', isMatch ? 'true' : 'false');
+        if (isMatch) {
+          link.setAttribute('aria-current', nextKey === 'home' ? 'page' : 'location');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      });
+    };
+
+    const resolveActiveKey = (): string => {
+      const scrollY = window.scrollY;
+      if (scrollY <= 12) {
+        return sections[0].getAttribute('data-scroll-section') || 'home';
+      }
+
+      const maxScroll = document.documentElement.scrollHeight;
+      if (window.innerHeight + scrollY >= maxScroll - 8) {
+        return sections[sections.length - 1].getAttribute('data-scroll-section') || 'contact';
+      }
+
+      const headerHeight = headerEl?.getBoundingClientRect().height || 58;
+      const triggerY = headerHeight + Math.min(140, Math.round(window.innerHeight * 0.22));
+
+      let active = sections[0].getAttribute('data-scroll-section') || 'home';
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= triggerY) {
+          active = section.getAttribute('data-scroll-section') || active;
+        } else {
+          break;
+        }
+      }
+      return active;
+    };
+
+    const update = () => {
+      rafId = 0;
+      setActiveKey(resolveActiveKey());
+    };
+
+    const scheduleUpdate = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(update);
+    };
+
+    const normalizePath = (path: string) => path.replace(/\/index\.html$/i, '/').replace(/\/+$/, '') || '/';
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    navLinks.forEach((link) => {
+      if (link.getAttribute('data-nav-key') !== 'home') return;
+      link.addEventListener('click', (event) => {
+        try {
+          const url = new URL(link.href, window.location.origin);
+          if (normalizePath(url.pathname) === normalizePath(window.location.pathname) && !url.hash) {
+            event.preventDefault();
+            if (window.location.hash) {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+            window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+          }
+        } catch {}
+      });
+    });
+
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+    window.addEventListener('hashchange', scheduleUpdate);
+    update();
+  }
+
+  initBrandTicker();
+  initNavScrollSpy();
+</script>
