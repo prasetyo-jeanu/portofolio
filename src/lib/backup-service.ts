@@ -161,6 +161,10 @@ export async function restoreFromArchive(
     liveDb.exec(`ATTACH DATABASE '${safeCandidatePath}' AS backup_source;`);
 
     try {
+      const existingTables = liveDb.query(
+        "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+      ).all() as { name: string }[];
+
       const tables = liveDb.query(
         "SELECT name, sql FROM backup_source.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
       ).all() as { name: string; sql: string }[];
@@ -173,24 +177,35 @@ export async function restoreFromArchive(
         "SELECT sql FROM backup_source.sqlite_master WHERE type='index' AND sql IS NOT NULL;"
       ).all() as { sql: string }[];
 
-      // Run restore inside an atomic transaction
-      liveDb.transaction(() => {
-        liveDb.exec('PRAGMA foreign_keys = OFF;');
+      // CRITICAL: SQLite requires foreign_keys=OFF to be set OUTSIDE a transaction
+      liveDb.exec('PRAGMA foreign_keys = OFF;');
+      liveDb.exec('PRAGMA legacy_alter_table = ON;');
 
-        for (const table of tables) {
-          liveDb.exec(`DROP TABLE IF EXISTS main.${table.name};`);
-          liveDb.exec(table.sql);
-          liveDb.exec(`INSERT INTO main.${table.name} SELECT * FROM backup_source.${table.name};`);
-        }
+      try {
+        // Run restore inside an atomic transaction
+        liveDb.transaction(() => {
+          // 1. Drop existing tables in main
+          for (const { name } of existingTables) {
+            liveDb.exec(`DROP TABLE IF EXISTS main."${name}";`);
+          }
 
-        for (const idx of indexes) {
-          try {
-            liveDb.exec(idx.sql);
-          } catch {}
-        }
+          // 2. Re-create and populate tables from backup
+          for (const table of tables) {
+            liveDb.exec(table.sql);
+            liveDb.exec(`INSERT INTO main."${table.name}" SELECT * FROM backup_source."${table.name}";`);
+          }
 
+          // 3. Re-create indexes
+          for (const idx of indexes) {
+            try {
+              liveDb.exec(idx.sql);
+            } catch {}
+          }
+        })();
+      } finally {
         liveDb.exec('PRAGMA foreign_keys = ON;');
-      })();
+        liveDb.exec('PRAGMA legacy_alter_table = OFF;');
+      }
     } finally {
       try {
         liveDb.exec('DETACH DATABASE backup_source;');
