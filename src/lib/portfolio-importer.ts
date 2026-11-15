@@ -41,9 +41,11 @@ export interface PortfolioImportSummary {
 /**
  * Loads, validates, and sorts all structured portfolio project definitions
  * from `<portfolioDir>/projects/<slug>/project.json`.
+ *
+ * Default dir: `src/seed/projects/`
  */
 export function loadPortfolioEntries(
-  portfolioDir = path.resolve(process.cwd(), 'portfolio-data'),
+  portfolioDir = path.resolve(process.cwd(), 'src/seed'),
 ): LoadedPortfolioEntry[] {
   const projectsDir = path.join(portfolioDir, 'projects');
   if (!fs.existsSync(projectsDir)) {
@@ -227,7 +229,7 @@ async function syncProjectTags(
 }
 
 /**
- * Idempotently imports all portfolio projects and cover media from `portfolio-data/`
+ * Idempotently imports all portfolio projects and cover media from `src/seed/`
  * into SQLite (`media`, `projects`, `project_translations`, `tags`, `project_tags`).
  */
 export async function importPortfolioToDb(options?: {

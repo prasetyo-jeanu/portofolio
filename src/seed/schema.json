@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Bilingual Portfolio Project File",
-  "description": "Structured canonical project schema for portfolio-data/projects/<slug>/project.json imported into SQLite via bun run portfolio:import.",
+  "description": "Structured canonical project schema for src/seed/projects/<slug>/project.json imported into SQLite via bun run portfolio:import.",
   "type": "object",
   "required": [
     "id",
