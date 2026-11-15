@@ -33,7 +33,6 @@ Thumbs.db
 porto_prompt/
 
 # Agent & IDE internals
-.agents/
 .superpowers/
 .impeccable/
 .taste-skill/
