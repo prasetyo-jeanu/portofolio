@@ -19,6 +19,7 @@
     "check": "bun --bun astro check",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
+    "export:data": "bun run scripts/export-transfer.ts",
     "deploy:webhook": "curl.exe -X POST http://217.217.255.58:3000/api/deploy/554a2f63340cb1563307fad1a0d79520c846cf0d9cd4b110"
   },
   "dependencies": {

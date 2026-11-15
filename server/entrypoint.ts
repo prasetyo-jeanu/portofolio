@@ -1,9 +1,6 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { eq } from 'drizzle-orm';
-import { db } from '../src/db';
-import { urlRedirects } from '../src/db/schema';
 import { env } from '../src/lib/env';
 
 // Dynamically load the built Astro Node middleware handler so typechecking works even before `astro build`
@@ -110,26 +107,6 @@ const server = http.createServer(async (req, res) => {
     pathname.startsWith('/uploads/');
 
   if (!isDynamicRoute && (method === 'GET' || method === 'HEAD')) {
-    // Check 301 redirects first
-    try {
-      const normalized = pathname.endsWith('/') ? pathname : `${pathname}/`;
-      const foundRedirect = await db
-        .select()
-        .from(urlRedirects)
-        .where(eq(urlRedirects.fromPath, normalized))
-        .limit(1);
-
-      if (foundRedirect.length > 0) {
-        res.writeHead(foundRedirect[0].statusCode, {
-          Location: foundRedirect[0].toPath,
-        });
-        res.end();
-        return;
-      }
-    } catch {
-      // Continue if DB unavailable
-    }
-
     const staticFile = findStaticFile(pathname);
     if (staticFile) {
       const ext = path.extname(staticFile).toLowerCase();

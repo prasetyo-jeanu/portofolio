@@ -37,8 +37,7 @@ export function getDb() {
 export function closeDb() {
   if (sqliteInstance) {
     try {
-      sqliteInstance.exec('PRAGMA wal_checkpoint(TRUNCATE);');
-      sqliteInstance.exec('PRAGMA journal_mode = DELETE;');
+      sqliteInstance.exec('PRAGMA wal_checkpoint(PASSIVE);');
     } catch {}
     try {
       sqliteInstance.close(true);

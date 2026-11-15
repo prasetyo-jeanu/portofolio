@@ -20,7 +20,7 @@ export async function createBackupArchive(): Promise<string> {
 
   // 1. Take a safe point-in-time SQLite snapshot
   const sqlite = getSqlite();
-  const escaped = tempDbPath.replace(/'/g, "''");
+  const escaped = tempDbPath.replace(/\\/g, '/').replace(/'/g, "''");
   sqlite.exec(`VACUUM INTO '${escaped}';`);
 
   // 2. Prepare tar archive path
@@ -67,7 +67,8 @@ export async function createBackupArchive(): Promise<string> {
 
 /**
  * Restores data from an uploaded archive (.tar.gz, .tgz, or .db).
- * Automatically creates a pre-restore safety snapshot before touching live files.
+ * Uses SQLite ATTACH DATABASE to perform an atomic in-process restore
+ * without breaking file handles or incurring WAL database locks.
  */
 export async function restoreFromArchive(
   archiveFilePath: string,
@@ -100,7 +101,7 @@ export async function restoreFromArchive(
     if (isDb) {
       candidateDbPath = archiveFilePath;
     } else {
-      // 1. Extract tar to isolated staging directory first
+      // 1. Extract tar to isolated staging directory
       const proc = Bun.spawn(['tar', '-xzf', archiveFilePath, '-C', stagingDir]);
       const exitCode = await proc.exited;
       if (exitCode !== 0) {
@@ -137,32 +138,67 @@ export async function restoreFromArchive(
     testCandidate.query('SELECT 1;').get();
     testCandidate.close();
 
-    // 3. Flush and close live DB cleanly
-    closeDb();
-
-    // 4. Create safety snapshot of current live DB
-    if (fs.existsSync(env.DATABASE_PATH)) {
-      try {
-        fs.copyFileSync(env.DATABASE_PATH, safetyBackupPath);
-      } catch (e) {
-        console.warn('Could not create safety backup:', e);
+    // 3. Create safety point-in-time snapshot of current live DB
+    const liveDb = getSqlite();
+    const safeBackupEscaped = safetyBackupPath.replace(/\\/g, '/').replace(/'/g, "''");
+    try {
+      liveDb.exec(`VACUUM INTO '${safeBackupEscaped}';`);
+    } catch {
+      if (fs.existsSync(env.DATABASE_PATH)) {
+        try {
+          fs.copyFileSync(env.DATABASE_PATH, safetyBackupPath);
+        } catch {}
       }
     }
 
-    // 5. Remove existing WAL & SHM files cleanly
-    const walPath = `${env.DATABASE_PATH}-wal`;
-    const shmPath = `${env.DATABASE_PATH}-shm`;
+    // 4. ATTACH the candidate database into the live connection and atomic swap
+    const safeCandidatePath = candidateDbPath.replace(/\\/g, '/').replace(/'/g, "''");
+
     try {
-      if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
-      if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+      liveDb.exec('DETACH DATABASE backup_source;');
     } catch {}
 
-    // 6. Copy new DB file to target DATABASE_PATH
-    fs.copyFileSync(candidateDbPath, env.DATABASE_PATH);
+    liveDb.exec(`ATTACH DATABASE '${safeCandidatePath}' AS backup_source;`);
 
-    // 7. Verify live database reopens cleanly
-    const liveTest = getSqlite();
-    liveTest.query('SELECT 1;').get();
+    try {
+      const tables = liveDb.query(
+        "SELECT name, sql FROM backup_source.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+      ).all() as { name: string; sql: string }[];
+
+      if (tables.length === 0) {
+        throw new Error('Source database contains no tables.');
+      }
+
+      const indexes = liveDb.query(
+        "SELECT sql FROM backup_source.sqlite_master WHERE type='index' AND sql IS NOT NULL;"
+      ).all() as { sql: string }[];
+
+      // Run restore inside an atomic transaction
+      liveDb.transaction(() => {
+        liveDb.exec('PRAGMA foreign_keys = OFF;');
+
+        for (const table of tables) {
+          liveDb.exec(`DROP TABLE IF EXISTS main.${table.name};`);
+          liveDb.exec(table.sql);
+          liveDb.exec(`INSERT INTO main.${table.name} SELECT * FROM backup_source.${table.name};`);
+        }
+
+        for (const idx of indexes) {
+          try {
+            liveDb.exec(idx.sql);
+          } catch {}
+        }
+
+        liveDb.exec('PRAGMA foreign_keys = ON;');
+      })();
+    } finally {
+      try {
+        liveDb.exec('DETACH DATABASE backup_source;');
+      } catch {}
+    }
+
+    // 5. Verify live database reopens cleanly
+    liveDb.query('SELECT 1;').get();
 
     return {
       success: true,
@@ -172,14 +208,6 @@ export async function restoreFromArchive(
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('Restore error:', errorMsg);
-
-    // Rollback to safety backup if available
-    try {
-      closeDb();
-      if (fs.existsSync(safetyBackupPath)) {
-        fs.copyFileSync(safetyBackupPath, env.DATABASE_PATH);
-      }
-    } catch {}
 
     return {
       success: false,

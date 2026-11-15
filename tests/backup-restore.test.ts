@@ -1,11 +1,15 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test, beforeAll } from 'bun:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { createBackupArchive, restoreFromArchive } from '../src/lib/backup-service';
 import { env } from '../src/lib/env';
+import { closeDb } from '../src/db';
 
 describe('Backup and Restore Service', () => {
+  beforeAll(() => {
+    closeDb();
+  });
   test('rejects unsupported file formats', async () => {
     const result = await restoreFromArchive('dummy.txt', 'dummy.txt');
     expect(result.success).toBe(false);
@@ -36,8 +40,10 @@ describe('Backup and Restore Service', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-restore-'));
     const dummyDbPath = path.join(tempDir, 'dummy.db');
 
-    // Create a copy of current db as dummy source
-    fs.copyFileSync(env.DATABASE_PATH, dummyDbPath);
+    // Create a snapshot of current db as dummy source
+    const live = (await import('../src/db')).getSqlite();
+    const safeDummy = dummyDbPath.replace(/\\/g, '/').replace(/'/g, "''");
+    live.exec(`VACUUM INTO '${safeDummy}';`);
 
     const result = await restoreFromArchive(dummyDbPath, 'dummy.db');
     expect(result.success).toBe(true);

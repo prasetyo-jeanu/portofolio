@@ -64,6 +64,7 @@ describe("Database, Auth, and Content Integrity Integration Tests", () => {
 
   afterAll(() => {
     closeDb();
+    delete process.env.DATABASE_PATH;
     for (const suffix of ["", "-wal", "-shm"]) {
       try {
         if (fs.existsSync(`${TEST_DB_PATH}${suffix}`)) {
