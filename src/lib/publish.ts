@@ -8,9 +8,12 @@ import { materializeContentFromDb } from '../../scripts/materialize-content';
 
 let inMemoryLock = false;
 
-const STAGING_DIR = path.join(path.dirname(env.PUBLIC_DIST_DIR), '.build-staging');
-const STAGING_OUT_DIR = path.join(STAGING_DIR, 'dist');
 const PREV_DIST_DIR = `${env.PUBLIC_DIST_DIR}.prev`;
+
+function safeCopyDir(src: string, dest: string): void {
+  fs.mkdirSync(dest, { recursive: true });
+  fs.cpSync(src, dest, { recursive: true });
+}
 
 function safeMoveDir(src: string, dest: string): void {
   try {
@@ -110,62 +113,55 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
     const { postsCount, projectsCount } = await materializeContentFromDb();
     log(`Materialized ${postsCount} published post(s) and ${projectsCount} published project(s).`);
 
-    if (fs.existsSync(STAGING_DIR)) {
-      fs.rmSync(STAGING_DIR, { recursive: true, force: true });
-    }
-    fs.mkdirSync(STAGING_DIR, { recursive: true });
-
-    log('Running Astro build into staging directory...');
-    const buildRes = await runCommandCapture(['bun', '--bun', 'astro', 'build'], {
-      ASTRO_OUT_DIR: STAGING_OUT_DIR,
-    });
+    log('Running Astro build into project dist directory...');
+    const buildRes = await runCommandCapture(['bun', '--bun', 'astro', 'build']);
     if (buildRes.stdout.trim()) log(buildRes.stdout.trim());
     if (buildRes.stderr.trim()) log(buildRes.stderr.trim());
 
     if (buildRes.exitCode !== 0) {
-      throw new Error(`Astro build failed with exit code ${buildRes.exitCode}`);
+      const errDetails = [buildRes.stderr, buildRes.stdout].filter(Boolean).join('\n').trim();
+      throw new Error(`Astro build failed (exit code ${buildRes.exitCode}): ${errDetails.slice(-600)}`);
     }
 
-    const stagingClientDir = path.join(STAGING_OUT_DIR, 'client');
-    if (!fs.existsSync(stagingClientDir)) {
-      throw new Error('Staging client output directory was not created by Astro build.');
+    const builtClientDir = path.resolve(process.cwd(), 'dist/client');
+    if (!fs.existsSync(builtClientDir)) {
+      throw new Error('Client output directory was not created by Astro build.');
     }
 
     log('Generating Pagefind search index...');
-    const pagefindRes = await runCommandCapture(['bunx', 'pagefind', '--site', stagingClientDir]);
+    const pagefindRes = await runCommandCapture(['bunx', 'pagefind', '--site', builtClientDir]);
     if (pagefindRes.stdout.trim()) log(pagefindRes.stdout.trim());
     if (pagefindRes.stderr.trim()) log(pagefindRes.stderr.trim());
 
     if (pagefindRes.exitCode !== 0) {
-      throw new Error(`Pagefind indexing failed with exit code ${pagefindRes.exitCode}`);
+      const errDetails = [pagefindRes.stderr, pagefindRes.stdout].filter(Boolean).join('\n').trim();
+      throw new Error(`Pagefind indexing failed (exit code ${pagefindRes.exitCode}): ${errDetails.slice(-600)}`);
     }
 
     // Verify essential public artifacts before touching live directory
     const requiredArtifacts = [
-      path.join(stagingClientDir, 'index.html'),
-      path.join(stagingClientDir, 'id', 'index.html'),
-      path.join(stagingClientDir, 'en', 'index.html'),
-      path.join(stagingClientDir, 'robots.txt'),
-      path.join(stagingClientDir, 'pagefind', 'pagefind.js'),
+      path.join(builtClientDir, 'index.html'),
+      path.join(builtClientDir, 'id', 'index.html'),
+      path.join(builtClientDir, 'en', 'index.html'),
+      path.join(builtClientDir, 'robots.txt'),
+      path.join(builtClientDir, 'pagefind', 'pagefind.js'),
     ];
     for (const artifact of requiredArtifacts) {
       if (!fs.existsSync(artifact)) {
-        throw new Error(`Missing required build artifact: ${path.relative(stagingClientDir, artifact)}`);
+        throw new Error(`Missing required build artifact: ${path.relative(builtClientDir, artifact)}`);
       }
     }
 
-    log('Swapping staging build into live public directory...');
+    log('Backing up previous public directory snapshot...');
     if (fs.existsSync(PREV_DIST_DIR)) {
       fs.rmSync(PREV_DIST_DIR, { recursive: true, force: true });
     }
     if (fs.existsSync(env.PUBLIC_DIST_DIR)) {
-      safeMoveDir(env.PUBLIC_DIST_DIR, PREV_DIST_DIR);
+      safeCopyDir(env.PUBLIC_DIST_DIR, PREV_DIST_DIR);
     }
-    safeMoveDir(stagingClientDir, env.PUBLIC_DIST_DIR);
 
-    if (fs.existsSync(STAGING_DIR)) {
-      fs.rmSync(STAGING_DIR, { recursive: true, force: true });
-    }
+    log('Deploying new client build to live public directory...');
+    safeCopyDir(builtClientDir, env.PUBLIC_DIST_DIR);
 
     const summary = `Published ${postsCount} post(s) and ${projectsCount} project(s) with updated sitemap & Pagefind index.`;
     log(summary);
@@ -184,10 +180,6 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log(`ERROR: ${errorMessage}`);
-
-    if (fs.existsSync(STAGING_DIR)) {
-      fs.rmSync(STAGING_DIR, { recursive: true, force: true });
-    }
 
     await db
       .update(publishingJobs)
