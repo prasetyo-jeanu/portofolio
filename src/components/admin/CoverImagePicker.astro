@@ -1,0 +1,268 @@
+---
+/**
+ * Cover image field for admin editors.
+ * The selected media id lives in a hidden input (`inputId`) so existing save handlers
+ * can keep reading it with `document.getElementById(inputId).value`.
+ * Users can upload a new image (stored via /api/media/upload) or pick one from the media library.
+ */
+interface MediaItem {
+  id: number;
+  filename: string;
+  publicUrl: string;
+  altEn?: string | null;
+  altId?: string | null;
+}
+
+interface Props {
+  inputId: string;
+  mediaList: MediaItem[];
+  selectedId?: number | null;
+  label?: string;
+  hint?: string;
+}
+
+const { inputId, mediaList, selectedId = null, label = 'Cover Image', hint } = Astro.props;
+const selected = mediaList.find((m) => m.id === selectedId) || null;
+---
+
+<div class="cover-picker" data-cover-picker data-input-id={inputId}>
+  <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">{label}</label>
+  <input type="hidden" id={inputId} value={selected ? String(selected.id) : ''} />
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+    <div
+      data-cover-preview
+      class="relative aspect-video w-full max-w-[360px] shrink-0 overflow-hidden rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-primary)]"
+    >
+      <img
+        data-cover-img
+        src={selected?.publicUrl || ''}
+        alt={selected ? selected.altEn || selected.filename : ''}
+        class:list={['h-full w-full object-cover', !selected && 'hidden']}
+      />
+      <div
+        data-cover-empty
+        class:list={['absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-[var(--text-muted)]', selected && 'hidden']}
+      >
+        No cover image yet
+      </div>
+      <div data-cover-loading class="absolute inset-0 hidden items-center justify-center bg-black/60 text-xs font-medium text-white">
+        Uploading…
+      </div>
+    </div>
+
+    <div class="min-w-0 space-y-2">
+      <p data-cover-name class="truncate font-mono text-xs text-[var(--text-secondary)]">
+        {selected ? selected.filename : 'Recommended: 16:9, e.g. 1280×720. PNG, JPEG, WebP, GIF or AVIF, max 5 MB.'}
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <label class="inline-flex cursor-pointer items-center rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-semibold text-black hover:opacity-90">
+          Upload image
+          <input data-cover-file type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" class="sr-only" />
+        </label>
+        <button
+          type="button"
+          data-cover-open
+          class="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)] cursor-pointer"
+        >
+          Choose from library
+        </button>
+        <button
+          type="button"
+          data-cover-clear
+          class:list={['rounded-xl px-3.5 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 cursor-pointer', !selected && 'hidden']}
+        >
+          Remove
+        </button>
+      </div>
+      {hint && <p class="text-xs text-[var(--text-muted)]">{hint}</p>}
+      <p data-cover-error class="hidden text-xs text-red-400"></p>
+    </div>
+  </div>
+
+  <dialog
+    data-cover-dialog
+    class="m-auto w-[min(960px,calc(100vw-2rem))] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-0 text-[var(--text-primary)] backdrop:bg-black/70"
+  >
+    <div class="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-3">
+      <h3 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Media Library</h3>
+      <input
+        data-cover-search
+        type="search"
+        placeholder="Search filename…"
+        class="w-full max-w-[260px] rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-1.5 text-sm"
+      />
+      <button type="button" data-cover-close class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">Close</button>
+    </div>
+    <div class="max-h-[65vh] overflow-y-auto p-5">
+      <div data-cover-grid class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {mediaList.map((m) => (
+          <button
+            type="button"
+            data-media-id={m.id}
+            data-media-url={m.publicUrl}
+            data-media-name={m.filename}
+            data-media-alt={m.altEn || m.filename}
+            aria-pressed={selectedId === m.id ? 'true' : 'false'}
+            class="cover-option group overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-left hover:border-[var(--accent)] cursor-pointer"
+          >
+            <span class="block aspect-video overflow-hidden">
+              <img src={m.publicUrl} alt={m.altEn || m.filename} loading="lazy" class="h-full w-full object-cover" />
+            </span>
+            <span class="block truncate px-2.5 py-1.5 font-mono text-[11px] text-[var(--text-secondary)]">{m.filename}</span>
+          </button>
+        ))}
+      </div>
+      <p data-cover-none class:list={['py-10 text-center text-sm text-[var(--text-muted)]', mediaList.length > 0 && 'hidden']}>
+        No images in the media library yet. Upload one with “Upload image”.
+      </p>
+    </div>
+  </dialog>
+</div>
+
+<style>
+  .cover-option[aria-pressed='true'] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+</style>
+
+<script>
+  type Picked = { id: number | string; url: string; name: string; alt: string };
+
+  document.querySelectorAll<HTMLElement>('[data-cover-picker]').forEach((root) => {
+    const input = document.getElementById(root.dataset.inputId || '') as HTMLInputElement | null;
+    if (!input) return;
+
+    const q = <T extends Element>(sel: string) => root.querySelector<T>(sel)!;
+    const img = q<HTMLImageElement>('[data-cover-img]');
+    const empty = q<HTMLElement>('[data-cover-empty]');
+    const loading = q<HTMLElement>('[data-cover-loading]');
+    const nameEl = q<HTMLElement>('[data-cover-name]');
+    const errEl = q<HTMLElement>('[data-cover-error]');
+    const clearBtn = q<HTMLButtonElement>('[data-cover-clear]');
+    const fileInput = q<HTMLInputElement>('[data-cover-file]');
+    const dialog = q<HTMLDialogElement>('[data-cover-dialog]');
+    const grid = q<HTMLElement>('[data-cover-grid]');
+    const search = q<HTMLInputElement>('[data-cover-search]');
+    const noneEl = q<HTMLElement>('[data-cover-none]');
+    const defaultHint = nameEl.textContent || '';
+
+    const showError = (msg: string) => {
+      errEl.textContent = msg;
+      errEl.classList.toggle('hidden', !msg);
+    };
+
+    const markSelected = () => {
+      grid.querySelectorAll<HTMLElement>('[data-media-id]').forEach((btn) => {
+        btn.setAttribute('aria-pressed', btn.dataset.mediaId === input.value ? 'true' : 'false');
+      });
+    };
+
+    const setValue = (item: Picked | null) => {
+      input.value = item ? String(item.id) : '';
+      img.src = item?.url || '';
+      img.alt = item?.alt || '';
+      img.classList.toggle('hidden', !item);
+      empty.classList.toggle('hidden', !!item);
+      clearBtn.classList.toggle('hidden', !item);
+      nameEl.textContent = item ? item.name : defaultHint;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      markSelected();
+    };
+
+    const fromButton = (btn: HTMLElement): Picked => ({
+      id: btn.dataset.mediaId!,
+      url: btn.dataset.mediaUrl!,
+      name: btn.dataset.mediaName!,
+      alt: btn.dataset.mediaAlt || btn.dataset.mediaName!,
+    });
+
+    const addToGrid = (item: Picked) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className =
+        'cover-option group overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-left hover:border-[var(--accent)] cursor-pointer';
+      btn.dataset.mediaId = String(item.id);
+      btn.dataset.mediaUrl = item.url;
+      btn.dataset.mediaName = item.name;
+      btn.dataset.mediaAlt = item.alt;
+      const thumb = document.createElement('span');
+      thumb.className = 'block aspect-video overflow-hidden';
+      const im = document.createElement('img');
+      im.src = item.url;
+      im.alt = item.alt;
+      im.className = 'h-full w-full object-cover';
+      thumb.appendChild(im);
+      const label = document.createElement('span');
+      label.className = 'block truncate px-2.5 py-1.5 font-mono text-[11px] text-[var(--text-secondary)]';
+      label.textContent = item.name;
+      btn.append(thumb, label);
+      grid.prepend(btn);
+      noneEl.classList.add('hidden');
+    };
+
+    grid.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-media-id]');
+      if (!btn) return;
+      setValue(fromButton(btn));
+      showError('');
+      dialog.close();
+    });
+
+    q<HTMLButtonElement>('[data-cover-open]').addEventListener('click', () => {
+      search.value = '';
+      grid.querySelectorAll<HTMLElement>('[data-media-id]').forEach((b) => b.classList.remove('hidden'));
+      markSelected();
+      dialog.showModal();
+    });
+    q<HTMLButtonElement>('[data-cover-close]').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+
+    search.addEventListener('input', () => {
+      const term = search.value.trim().toLowerCase();
+      grid.querySelectorAll<HTMLElement>('[data-media-id]').forEach((b) => {
+        b.classList.toggle('hidden', !!term && !(b.dataset.mediaName || '').toLowerCase().includes(term));
+      });
+    });
+
+    clearBtn.addEventListener('click', () => setValue(null));
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      showError('');
+      if (file.size > 5 * 1024 * 1024) {
+        showError('File exceeds the 5 MB limit.');
+        fileInput.value = '';
+        return;
+      }
+
+      loading.classList.remove('hidden');
+      loading.classList.add('flex');
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/media/upload', { method: 'POST', body: fd });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.media) throw new Error(json.error || 'Upload failed.');
+        const item: Picked = {
+          id: json.media.id,
+          url: json.media.publicUrl,
+          name: json.media.filename,
+          alt: json.media.altEn || json.media.filename,
+        };
+        addToGrid(item);
+        setValue(item);
+      } catch (err) {
+        showError(err instanceof Error ? err.message : 'Upload failed.');
+      } finally {
+        loading.classList.add('hidden');
+        loading.classList.remove('flex');
+        fileInput.value = '';
+      }
+    });
+  });
+</script>

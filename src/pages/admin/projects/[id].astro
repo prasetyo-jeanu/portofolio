@@ -6,6 +6,7 @@ import { media, projects, projectTags, projectTranslations, tags } from '../../.
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
 import CodeMirrorEditor from '../../../components/admin/CodeMirrorEditor.astro';
+import CoverImagePicker from '../../../components/admin/CoverImagePicker.astro';
 
 const rawId = Astro.params.id;
 const isNew = rawId === 'new';
@@ -37,7 +38,7 @@ if (projectId) {
   tagNames = tagRows.map((r) => r.name);
 }
 
-const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(50);
+const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(500);
 ---
 
 <AdminLayout title={isNew ? 'New Project' : `Edit Project #${projectId}`} activeNav="projects">
@@ -64,24 +65,22 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
     <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 space-y-4">
       <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Shared Project Metadata</h2>
       <div class="grid gap-4 sm:grid-cols-6">
-        <div class="sm:col-span-2">
+        <div class="sm:col-span-5">
           <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Category</label>
           <input id="proj-category" type="text" value={projRow?.category || 'fullstack'} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
-        </div>
-        <div class="sm:col-span-3">
-          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Cover Image</label>
-          <select id="proj-cover" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
-            <option value="">No cover image</option>
-            {mediaList.map((m) => (
-              <option value={m.id} selected={projRow?.coverMediaId === m.id}>{m.filename}</option>
-            ))}
-          </select>
         </div>
         <div class="sm:col-span-1">
           <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Sort Order</label>
           <input id="proj-sort" type="number" value={projRow?.sortOrder ?? 0} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
         </div>
       </div>
+
+      <CoverImagePicker
+        inputId="proj-cover"
+        mediaList={mediaList}
+        selectedId={projRow?.coverMediaId ?? null}
+        hint="Displayed at 16:9 on project cards and detail pages."
+      />
 
       <div>
         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tech Stack Tags (comma separated)</label>

@@ -6,6 +6,7 @@ import { media, posts, postTags, postTranslations, tags } from '../../../db/sche
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
 import CodeMirrorEditor from '../../../components/admin/CodeMirrorEditor.astro';
+import CoverImagePicker from '../../../components/admin/CoverImagePicker.astro';
 
 const rawId = Astro.params.id;
 const isNew = rawId === 'new';
@@ -37,7 +38,7 @@ if (postId) {
   tagNames = tagRows.map((r) => r.name);
 }
 
-const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(50);
+const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(500);
 ---
 
 <AdminLayout title={isNew ? 'New Article' : `Edit Article #${postId}`} activeNav="posts">
@@ -69,7 +70,7 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
     <!-- Shared Metadata -->
     <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5">
       <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)] mb-4">Shared Article Settings</h2>
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label for="post-category" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Category</label>
           <input
@@ -89,21 +90,21 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
             class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm"
           />
         </div>
-        <div>
-          <label for="post-cover" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Cover Image</label>
-          <select id="post-cover" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
-            <option value="">No cover image</option>
-            {mediaList.map((m) => (
-              <option value={m.id} selected={postRow?.coverMediaId === m.id}>{m.filename}</option>
-            ))}
-          </select>
-        </div>
         <div class="flex items-end pb-2">
           <label class="inline-flex items-center gap-2 text-sm font-medium text-[var(--text-primary)] cursor-pointer">
             <input id="post-featured" type="checkbox" checked={postRow?.featured || false} class="h-4 w-4 rounded accent-[var(--accent)]" />
             Featured Article
           </label>
         </div>
+      </div>
+
+      <div class="mt-4">
+        <CoverImagePicker
+          inputId="post-cover"
+          mediaList={mediaList}
+          selectedId={postRow?.coverMediaId ?? null}
+          hint="Displayed at 16:9 at the top of the article."
+        />
       </div>
     </section>
 

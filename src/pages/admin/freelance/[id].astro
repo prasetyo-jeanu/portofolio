@@ -6,6 +6,7 @@ import { freelanceProjects, freelanceProjectTranslations, media } from '../../..
 import { parseTechStackJson } from '../../../lib/freelance-service';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
+import CoverImagePicker from '../../../components/admin/CoverImagePicker.astro';
 
 const rawId = Astro.params.id;
 const isNew = rawId === 'new';
@@ -38,7 +39,7 @@ if (freelanceProjectId) {
   enTrans = transRows.find((t) => t.locale === 'en') || null;
 }
 
-const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(50);
+const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(500);
 ---
 
 <AdminLayout title={isNew ? 'New Freelance Project' : `Edit Freelance #${freelanceProjectId}`} activeNav="freelance">
@@ -59,24 +60,22 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
     <section class="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-5 space-y-4">
       <h2 class="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)]">Shared Project Metadata</h2>
       <div class="grid gap-4 sm:grid-cols-6">
-        <div class="sm:col-span-2">
+        <div class="sm:col-span-5">
           <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Category</label>
           <input id="fl-category" type="text" value={projRow?.category || 'freelance'} placeholder="saas, ai, automation, mobile..." class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
-        </div>
-        <div class="sm:col-span-3">
-          <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Cover Image (optional)</label>
-          <select id="fl-cover" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm">
-            <option value="">No cover image</option>
-            {mediaList.map((m) => (
-              <option value={m.id} selected={projRow?.coverMediaId === m.id}>{m.filename}</option>
-            ))}
-          </select>
         </div>
         <div class="sm:col-span-1">
           <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Sort Order</label>
           <input id="fl-sort" type="number" value={projRow?.sortOrder ?? 0} class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
         </div>
       </div>
+
+      <CoverImagePicker
+        inputId="fl-cover"
+        mediaList={mediaList}
+        selectedId={projRow?.coverMediaId ?? null}
+        label="Cover Image (optional)"
+      />
 
       <div>
         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tech Stack (comma separated)</label>
