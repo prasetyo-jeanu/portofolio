@@ -733,11 +733,11 @@ const totalContactChannels = (hasContactEmail ? 1 : 0) + directChannels.length;
               <img
                 src={project.data.coverImage}
                 alt={project.data.coverAlt || project.data.title}
-                width="640"
-                height="640"
+                width="1280"
+                height="720"
                 loading="lazy"
                 decoding="async"
-                class="mx-auto mt-5 aspect-square w-full max-w-[380px] rounded border border-[var(--border-subtle)] bg-[#222831] object-cover"
+                class="mt-5 aspect-video w-full rounded border border-[var(--border-subtle)] bg-[#222831] object-cover"
               />
             )}
 
@@ -2431,7 +2431,7 @@ const totalContactChannels = (hasContactEmail ? 1 : 0) + directChannels.length;
     margin-bottom: 0.875rem;
   }
   #projects-grid[data-view='list'] :global(.project-card-thumb) {
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 16 / 9;
   }
   #projects-grid[data-view='list'] :global(.project-card-summary) {
     display: block;

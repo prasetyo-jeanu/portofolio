@@ -42,7 +42,7 @@ export const portfolioProjectFileSchema = z.object({
     file: z.string().trim().min(1),
     width: z.number().int().positive(),
     height: z.number().int().positive(),
-    aspect_ratio: z.literal('1:1'),
+    aspect_ratio: z.enum(['1:1', '16:9']),
     alt: z.object({
       en: z.string().trim().min(1).max(240),
       id: z.string().trim().min(1).max(240),

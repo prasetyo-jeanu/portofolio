@@ -56,13 +56,13 @@ const projectDetailUrl = getProjectUrl(locale, slug);
         data-open-project={slug}
         aria-label={openPreviewLabel}
         tabindex="-1"
-        class="project-card-thumb block aspect-[16/10] w-full cursor-pointer overflow-hidden rounded border border-[var(--border-ledger)] bg-[#222831] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        class="project-card-thumb block aspect-video w-full cursor-pointer overflow-hidden rounded border border-[var(--border-ledger)] bg-[#222831] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
       >
         <img
           src={coverImage}
           alt={coverAlt || title}
-          width="640"
-          height="640"
+          width="1280"
+          height="720"
           loading="lazy"
           decoding="async"
           class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
