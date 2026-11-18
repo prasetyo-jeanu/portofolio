@@ -1,5 +1,4 @@
 ---
-import { render } from 'astro:content';
 import type { Locale } from '../../db/schema';
 import { getPublishedPostsByLocale, getPublishedProjectsByLocale } from '../../lib/content-queries';
 import { getPublishedFreelanceProjectsByLocale } from '../../lib/freelance-queries';
@@ -10,8 +9,6 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 import ProjectCard from '../ProjectCard.astro';
 import PostCard from '../PostCard.astro';
 import CopyCodeEnhancer from '../CopyCodeEnhancer.astro';
-import Callout from '../mdx/Callout.astro';
-import Figure from '../mdx/Figure.astro';
 
 export interface Props {
   locale: Locale;
@@ -28,13 +25,6 @@ const latestPosts = allPosts.slice(0, 3);
 const allProjects = await getPublishedProjectsByLocale(locale);
 const freelanceItems = await getPublishedFreelanceProjectsByLocale(locale);
 const hasFreelance = freelanceItems.length > 0;
-
-const renderedProjects = await Promise.all(
-  allProjects.map(async (project) => {
-    const { Content } = await render(project);
-    return { project, Content };
-  }),
-);
 
 const tagCounts = new Map<string, number>();
 for (const project of allProjects) {
@@ -134,7 +124,6 @@ const filterGroupLabel = locale === 'id' ? 'Filter proyek berdasarkan teknologi'
 const viewGroupLabel = locale === 'id' ? 'Pilihan tampilan proyek' : 'Project layout view';
 const gridViewLabel = locale === 'id' ? 'Tampilan grid' : 'Grid view';
 const listViewLabel = locale === 'id' ? 'Tampilan list penuh' : 'Full-width list view';
-const closeModalLabel = locale === 'id' ? 'Tutup dialog studi kasus' : 'Close case study dialog';
 const modalCloseText = locale === 'id' ? 'Tutup' : 'Close';
 const modalCloseBtnClass =
   'inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded border border-[var(--text-muted)]/45 bg-[var(--bg-elevated)] px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-primary)] shadow-sm transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-fill)] hover:text-[var(--accent-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]';
@@ -678,156 +667,6 @@ const totalContactChannels = (hasContactEmail ? 1 : 0) + directChannels.length;
         </div>
       )}
     </div>
-
-    {renderedProjects.map(({ project, Content }, idx) => {
-      const prevProject = renderedProjects[(idx - 1 + renderedProjects.length) % renderedProjects.length];
-      const nextProject = renderedProjects[(idx + 1) % renderedProjects.length];
-      return (
-        <dialog
-          id={`project-modal-${project.data.slug}`}
-          data-project-modal={project.data.slug}
-          aria-labelledby={`project-modal-title-${project.data.slug}`}
-          class="m-auto max-h-[88vh] w-[min(92vw,52rem)] overflow-y-auto rounded-md border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/75"
-        >
-          <div class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)] px-6 py-4">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-                {project.data.category}
-              </span>
-              {project.data.featured && (
-                <span class="rounded border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--accent)]">
-                  {t.projects.featuredBadge}
-                </span>
-              )}
-              {project.data.isConfidential && (
-                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-                  {t.projects.confidentialBadge}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              data-close-project-modal
-              aria-label={closeModalLabel}
-              class={modalCloseBtnClass}
-            >
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M18 6 6 18"></path>
-                <path d="m6 6 12 12"></path>
-              </svg>
-              <span>{modalCloseText}</span>
-            </button>
-          </div>
-
-          <div class="p-6 sm:p-8">
-            <h3 id={`project-modal-title-${project.data.slug}`} class="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-              {project.data.title}
-            </h3>
-            {project.data.role && (
-              <p class="mt-1 font-mono text-xs text-[var(--text-muted)]">
-                {project.data.role}
-              </p>
-            )}
-
-            {project.data.coverImage && (
-              <img
-                src={project.data.coverImage}
-                alt={project.data.coverAlt || project.data.title}
-                width="1280"
-                height="720"
-                loading="lazy"
-                decoding="async"
-                class="mt-5 aspect-video w-full rounded border border-[var(--border-subtle)] bg-[#222831] object-cover"
-              />
-            )}
-
-            <div class="mt-5 flex flex-wrap gap-2">
-              {project.data.tags.map((tag) => (
-                <span class="rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
-                  {tag}
-                </span>
-              ))}
-            </div>
-
-            {project.data.isConfidential && (
-              <p class="mt-5 rounded border border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 font-mono text-xs leading-relaxed text-[var(--text-secondary)]">
-                {t.projects.confidentialNote}
-              </p>
-            )}
-
-            <div class="prose-tech mt-6">
-              <Content components={{ Callout, Figure }} />
-            </div>
-
-            <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] pt-5">
-              <a
-                href={getProjectUrl(locale, project.data.slug)}
-                class="inline-flex min-h-[38px] items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-2 font-mono text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <span>{t.projects.openFullPage}</span>
-                <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M7 7h10v10"></path>
-                  <path d="M7 17 17 7"></path>
-                </svg>
-              </a>
-              {project.data.demoUrl && (
-                <a
-                  href={project.data.demoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex min-h-[38px] items-center rounded bg-[var(--accent-fill)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] hover:brightness-95"
-                >
-                  {t.projects.demoButton}
-                </a>
-              )}
-              {project.data.repoUrl && (
-                <a
-                  href={project.data.repoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex min-h-[38px] items-center rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  {t.projects.repoButton}
-                </a>
-              )}
-            </div>
-
-            {renderedProjects.length > 1 && (
-              <nav
-                aria-label={t.projects.modalNavLabel}
-                class="mt-8 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-5"
-              >
-                <button
-                  type="button"
-                  data-open-project={prevProject.project.data.slug}
-                  class="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3.5 py-2 font-mono text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M19 12H5"></path>
-                    <path d="m12 19-7-7 7-7"></path>
-                  </svg>
-                  <span>{t.projects.prevModal}</span>
-                </button>
-                <span class="monograph-num font-mono text-xs text-[var(--text-muted)]">
-                  {String(idx + 1).padStart(2, '0')} / {String(renderedProjects.length).padStart(2, '0')}
-                </span>
-                <button
-                  type="button"
-                  data-open-project={nextProject.project.data.slug}
-                  class="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3.5 py-2 font-mono text-xs font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  <span>{t.projects.nextModal}</span>
-                  <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M5 12h14"></path>
-                    <path d="m12 5 7 7-7 7"></path>
-                  </svg>
-                </button>
-              </nav>
-            )}
-          </div>
-        </dialog>
-      );
-    })}
 
     {hasFreelance &&
       freelanceItems.map((item) => (
@@ -1993,74 +1832,36 @@ const totalContactChannels = (hasContactEmail ? 1 : 0) + directChannels.length;
     }
   });
 
-  const projectModals = Array.from(document.querySelectorAll<HTMLDialogElement>('[data-project-modal]'));
-  let suppressHashCleanup = false;
-
-  function openProjectModal(slug: string, updateHash = true) {
-    const dialog = projectModals.find((el) => el.getAttribute('data-project-modal') === slug);
-    if (!dialog) return;
-
-    const currentlyOpen = projectModals.find((el) => el.open && el !== dialog);
-    if (currentlyOpen) {
-      suppressHashCleanup = true;
-      currentlyOpen.close();
-      suppressHashCleanup = false;
-    }
-
-    dialog.scrollTop = 0;
-    if (!dialog.open) {
-      dialog.showModal();
-    }
-    if (updateHash && window.location.hash !== `#project-${slug}`) {
-      window.history.replaceState(null, '', `#project-${slug}`);
-    }
-  }
-
-  document.querySelectorAll('[data-open-project]').forEach((trigger) => {
-    trigger.addEventListener('click', (event) => {
-      if (trigger instanceof HTMLAnchorElement) {
-        const mouseEvent = event as MouseEvent;
-        if (
-          mouseEvent.metaKey ||
-          mouseEvent.ctrlKey ||
-          mouseEvent.shiftKey ||
-          mouseEvent.altKey ||
-          mouseEvent.button !== 0
-        ) {
-          return;
-        }
-        event.preventDefault();
-      }
-      event.stopPropagation();
-      const slug = trigger.getAttribute('data-open-project');
-      if (slug) openProjectModal(slug, true);
-    });
-  });
-
+  // Project cards open the standalone case-study page (no modal).
   projectCards.forEach((card) => {
     card.addEventListener('click', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('a, button')) return;
-      const slug = card.getAttribute('data-project-slug');
-      if (slug) openProjectModal(slug, true);
+      const url = card.getAttribute('data-project-url');
+      if (!url) return;
+      const mouseEvent = event as MouseEvent;
+      if (mouseEvent.metaKey || mouseEvent.ctrlKey) {
+        window.open(url, '_blank', 'noopener');
+        return;
+      }
+      window.location.href = url;
     });
   });
 
-  projectModals.forEach((dialog) => {
-    const closeBtn = dialog.querySelector('[data-close-project-modal]');
-    closeBtn?.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) {
-        dialog.close();
-      }
-    });
-    dialog.addEventListener('close', () => {
-      if (suppressHashCleanup) return;
-      if (window.location.hash.startsWith('#project-')) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-    });
-  });
+  // Legacy deep links (#project-<slug>) redirect to the standalone page.
+  function redirectLegacyProjectHash(): boolean {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#project-')) return false;
+    let slug = hash.slice('#project-'.length);
+    try {
+      slug = decodeURIComponent(slug);
+    } catch {}
+    const card = Array.from(projectCards).find((el) => el.getAttribute('data-project-slug') === slug);
+    const url = card?.getAttribute('data-project-url');
+    if (!url) return false;
+    window.location.replace(url);
+    return true;
+  }
 
   const portfolioTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-portfolio-tab]'));
   const mainPanel = document.querySelector<HTMLElement>('[data-portfolio-panel="main"]');
@@ -2112,16 +1913,7 @@ const totalContactChannels = (hasContactEmail ? 1 : 0) + directChannels.length;
       return;
     }
 
-    if (hash.startsWith('#project-')) {
-      const rawSlug = hash.slice('#project-'.length);
-      let decodedSlug = rawSlug;
-      try {
-        decodedSlug = decodeURIComponent(rawSlug);
-      } catch {}
-      if (!decodedSlug) return;
-      activatePortfolioTab('main');
-      openProjectModal(decodedSlug, false);
-    }
+    redirectLegacyProjectHash();
   }
 
   syncPortfolioFromHash(true);

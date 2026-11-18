@@ -175,7 +175,7 @@ const jsonLd = [
       <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
         <div class="min-w-0">
           {entry.data.coverImage && (
-            <figure class="mb-8 overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[#222831] p-4 sm:p-6">
+            <figure class="mb-8 aspect-video overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[#222831]">
               <img
                 src={entry.data.coverImage}
                 alt={entry.data.coverAlt || entry.data.title}
@@ -183,7 +183,8 @@ const jsonLd = [
                 height="720"
                 loading="eager"
                 decoding="async"
-                class="aspect-video w-full rounded border border-[var(--border-ledger)] object-cover"
+                fetchpriority="high"
+                class="h-full w-full object-cover"
               />
             </figure>
           )}
