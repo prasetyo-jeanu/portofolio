@@ -1,0 +1,521 @@
+---
+/**
+ * Multi-image gallery manager with cover selector for admin project editor.
+ * Outputs values into two hidden inputs:
+ * 1. coverInputId: media.id of the selected main cover image (or empty string)
+ * 2. galleryInputId: JSON string array of { url, alt, caption }
+ */
+interface MediaItem {
+  id: number;
+  filename: string;
+  publicUrl: string;
+  altEn?: string | null;
+  altId?: string | null;
+}
+
+export interface GalleryInputItem {
+  mediaId?: number | null;
+  url: string;
+  alt: string;
+  caption?: string;
+  filename?: string;
+}
+
+interface Props {
+  coverInputId?: string;
+  galleryInputId?: string;
+  mediaList: MediaItem[];
+  initialCoverId?: number | null;
+  initialGallery?: Array<{ url: string; alt: string; caption?: string; mediaId?: number }>;
+  label?: string;
+  hint?: string;
+}
+
+const {
+  coverInputId = 'proj-cover',
+  galleryInputId = 'proj-gallery-json',
+  mediaList = [],
+  initialCoverId = null,
+  initialGallery = [],
+  label = 'Project Images & Gallery',
+  hint = 'Unggah atau pilih beberapa gambar untuk proyek ini. Pilih satu gambar sebagai Cover Utama (akan tampil di kartu depan dan thumbnail utama).',
+} = Astro.props;
+
+// Build initial items array:
+// Match mediaList by publicUrl or mediaId
+const mediaByUrl = new Map<string, MediaItem>();
+const mediaById = new Map<number, MediaItem>();
+for (const m of mediaList) {
+  mediaByUrl.set(m.publicUrl, m);
+  mediaById.set(m.id, m);
+}
+
+let effectiveGallery: GalleryInputItem[] = initialGallery.map((g) => {
+  const matchedMedia = (g.mediaId ? mediaById.get(g.mediaId) : undefined) || mediaByUrl.get(g.url);
+  return {
+    mediaId: matchedMedia?.id ?? g.mediaId ?? null,
+    url: g.url,
+    alt: g.alt || matchedMedia?.altId || matchedMedia?.altEn || '',
+    caption: g.caption || '',
+    filename: matchedMedia?.filename || g.url.split('/').pop() || 'image',
+  };
+});
+
+// If initialCoverId exists and is not in gallery, ensure it's in effectiveGallery
+if (initialCoverId && !effectiveGallery.some((item) => item.mediaId === initialCoverId)) {
+  const coverMedia = mediaById.get(initialCoverId);
+  if (coverMedia) {
+    effectiveGallery.unshift({
+      mediaId: coverMedia.id,
+      url: coverMedia.publicUrl,
+      alt: coverMedia.altId || coverMedia.altEn || '',
+      caption: '',
+      filename: coverMedia.filename,
+    });
+  }
+}
+
+// Ensure initialCoverId is valid, or fallback to first item if available
+let effectiveCoverId = initialCoverId;
+if (!effectiveCoverId && effectiveGallery.length > 0 && effectiveGallery[0].mediaId) {
+  effectiveCoverId = effectiveGallery[0].mediaId;
+}
+
+const initialJson = JSON.stringify(
+  effectiveGallery.map((it) => ({
+    url: it.url,
+    alt: it.alt || '',
+    caption: it.caption ? it.caption : undefined,
+  }))
+);
+---
+
+<div
+  class="project-gallery-manager space-y-4"
+  data-gallery-manager
+  data-cover-input-id={coverInputId}
+  data-gallery-input-id={galleryInputId}
+>
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-2.5">
+    <div>
+      <label class="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+        {label}
+      </label>
+      {hint && <p class="text-xs text-[var(--text-muted)] mt-0.5">{hint}</p>}
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-black hover:opacity-90 transition-opacity">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Gambar
+        <input data-upload-input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/avif" class="sr-only" />
+      </label>
+      <button
+        type="button"
+        data-open-library
+        class="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)] cursor-pointer transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Pilih dari Library
+      </button>
+    </div>
+  </div>
+
+  <!-- Hidden inputs storing the actual values read by form save handler -->
+  <input type="hidden" id={coverInputId} value={effectiveCoverId ? String(effectiveCoverId) : ''} />
+  <input type="hidden" id={galleryInputId} value={initialJson} />
+
+  <!-- Loading state -->
+  <div data-uploading-banner class="hidden rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] p-3 text-xs text-[var(--accent)] flex items-center gap-2">
+    <div class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+    <span data-uploading-text>Mengunggah gambar...</span>
+  </div>
+
+  <!-- Gallery items list -->
+  <div data-gallery-list class="space-y-3">
+    <!-- Rendered dynamically by script -->
+  </div>
+
+  <!-- Empty state message -->
+  <div
+    data-empty-state
+    class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-primary)] py-8 px-4 text-center"
+  >
+    <div class="rounded-full bg-[var(--bg-elevated)] p-3 mb-2 text-[var(--text-muted)]">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </div>
+    <p class="text-sm font-medium text-[var(--text-secondary)]">Belum ada gambar proyek.</p>
+    <p class="text-xs text-[var(--text-muted)] mt-1">Unggah gambar baru atau pilih dari Media Library di atas.</p>
+  </div>
+
+  <!-- Media Library Selection Modal -->
+  <dialog
+    data-library-dialog
+    class="m-auto w-[min(960px,calc(100vw-2rem))] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-0 text-[var(--text-primary)] backdrop:bg-black/75"
+  >
+    <div class="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-3.5">
+      <div>
+        <h3 class="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Media Library</h3>
+        <p class="text-xs text-[var(--text-muted)]">Klik gambar untuk menambahkannya ke galeri proyek ini.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <input
+          data-library-search
+          type="search"
+          placeholder="Cari nama file..."
+          class="w-full max-w-[240px] rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]"
+        />
+        <button
+          type="button"
+          data-library-close
+          class="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)] cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="max-h-[65vh] overflow-y-auto p-5">
+      <div data-library-grid class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {mediaList.map((m) => (
+          <button
+            type="button"
+            data-lib-item
+            data-media-id={m.id}
+            data-media-url={m.publicUrl}
+            data-media-name={m.filename}
+            data-media-alt={m.altId || m.altEn || m.filename}
+            class="group relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-left hover:border-[var(--accent)] cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          >
+            <div class="aspect-video w-full overflow-hidden bg-black/20">
+              <img src={m.publicUrl} alt={m.altId || m.altEn || m.filename} loading="lazy" class="h-full w-full object-cover transition-transform group-hover:scale-105" />
+            </div>
+            <div class="p-2">
+              <span class="block truncate font-mono text-[11px] text-[var(--text-secondary)]">{m.filename}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+      <p data-library-empty class:list={['py-12 text-center text-sm text-[var(--text-muted)]', mediaList.length > 0 && 'hidden']}>
+        Belum ada gambar di media library. Unggah gambar menggunakan tombol "Upload Gambar".
+      </p>
+    </div>
+  </dialog>
+</div>
+
+<!-- Initial items serialized for client hydration -->
+<script is:inline define:vars={{ effectiveGallery, effectiveCoverId }}>
+  window.__INITIAL_PROJECT_GALLERY__ = effectiveGallery;
+  window.__INITIAL_PROJECT_COVER_ID__ = effectiveCoverId;
+</script>
+
+<script>
+  interface GalleryItemState {
+    mediaId: number | null;
+    url: string;
+    alt: string;
+    caption: string;
+    filename: string;
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-gallery-manager]').forEach((root) => {
+    const coverInputId = root.dataset.coverInputId || 'proj-cover';
+    const galleryInputId = root.dataset.galleryInputId || 'proj-gallery-json';
+
+    const coverInput = document.getElementById(coverInputId) as HTMLInputElement | null;
+    const galleryInput = document.getElementById(galleryInputId) as HTMLInputElement | null;
+
+    const listEl = root.querySelector<HTMLElement>('[data-gallery-list]')!;
+    const emptyStateEl = root.querySelector<HTMLElement>('[data-empty-state]')!;
+    const uploadInput = root.querySelector<HTMLInputElement>('[data-upload-input]')!;
+    const uploadingBanner = root.querySelector<HTMLElement>('[data-uploading-banner]')!;
+    const uploadingText = root.querySelector<HTMLElement>('[data-uploading-text]')!;
+
+    const dialog = root.querySelector<HTMLDialogElement>('[data-library-dialog]')!;
+    const openLibraryBtn = root.querySelector<HTMLButtonElement>('[data-open-library]')!;
+    const closeLibraryBtn = root.querySelector<HTMLButtonElement>('[data-library-close]')!;
+    const searchInput = root.querySelector<HTMLInputElement>('[data-library-search]')!;
+    const libraryGrid = root.querySelector<HTMLElement>('[data-library-grid]')!;
+
+    // Initial state from SSR
+    const win = window as unknown as {
+      __INITIAL_PROJECT_GALLERY__?: GalleryItemState[];
+      __INITIAL_PROJECT_COVER_ID__?: number | null;
+    };
+
+    let items: GalleryItemState[] = Array.isArray(win.__INITIAL_PROJECT_GALLERY__)
+      ? [...win.__INITIAL_PROJECT_GALLERY__]
+      : [];
+    let currentCoverId: number | null = win.__INITIAL_PROJECT_COVER_ID__ ?? null;
+
+    // Helper to sync hidden inputs
+    const syncState = () => {
+      // If currentCoverId is not in items, fallback to first item with a mediaId
+      if (items.length > 0) {
+        const coverItem = items.find((it) => it.mediaId === currentCoverId);
+        if (!coverItem) {
+          const firstWithId = items.find((it) => it.mediaId);
+          currentCoverId = firstWithId ? firstWithId.mediaId : null;
+        }
+      } else {
+        currentCoverId = null;
+      }
+
+      if (coverInput) {
+        coverInput.value = currentCoverId ? String(currentCoverId) : '';
+      }
+      if (galleryInput) {
+        galleryInput.value = JSON.stringify(
+          items.map((it) => ({
+            url: it.url,
+            alt: it.alt || '',
+            caption: it.caption ? it.caption : undefined,
+          }))
+        );
+      }
+
+      emptyStateEl.classList.toggle('hidden', items.length > 0);
+    };
+
+    const render = () => {
+      syncState();
+      listEl.innerHTML = '';
+
+      items.forEach((item, index) => {
+        const isCover = item.mediaId !== null && item.mediaId === currentCoverId;
+
+        const card = document.createElement('div');
+        card.className = `group relative rounded-xl border p-3.5 transition-all ${
+          isCover
+            ? 'border-[var(--accent)] bg-[var(--accent-soft)]/20 shadow-[0_0_0_1px_var(--accent)]'
+            : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] hover:border-[var(--accent)]/50'
+        }`;
+        card.dataset.index = String(index);
+
+        card.innerHTML = `
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div class="relative aspect-video w-full sm:w-44 shrink-0 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+              <img src="${item.url}" alt="${item.alt || item.filename}" class="h-full w-full object-cover" />
+              ${
+                isCover
+                  ? `<div class="absolute top-1.5 left-1.5 rounded-md bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold text-black uppercase tracking-wider shadow">
+                      ★ Cover Utama
+                    </div>`
+                  : ''
+              }
+            </div>
+
+            <div class="flex-1 min-w-0 space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="truncate font-mono text-xs font-medium text-[var(--text-primary)]" title="${item.filename}">
+                  #${index + 1} • ${item.filename}
+                </span>
+
+                <div class="flex items-center gap-1.5">
+                  ${
+                    isCover
+                      ? `<span class="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-black">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                          Cover Terpilih
+                        </span>`
+                      : `<button type="button" data-action="set-cover" class="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer transition-colors">
+                          Jadikan Cover
+                        </button>`
+                  }
+
+                  <div class="inline-flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+                    <button type="button" data-action="move-up" class="px-2 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer" ${index === 0 ? 'disabled' : ''} title="Geser ke atas">
+                      ↑
+                    </button>
+                    <button type="button" data-action="move-down" class="px-2 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border-l border-[var(--border-subtle)]" ${index === items.length - 1 ? 'disabled' : ''} title="Geser ke bawah">
+                      ↓
+                    </button>
+                  </div>
+
+                  <button type="button" data-action="remove" class="rounded-lg px-2.5 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10 cursor-pointer transition-colors" title="Hapus gambar dari proyek">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label class="block text-[11px] font-mono text-[var(--text-muted)] mb-1">Alt Text</label>
+                  <input type="text" data-field="alt" value="${item.alt || ''}" placeholder="Deskripsi gambar..." class="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2.5 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono text-[var(--text-muted)] mb-1">Caption (opsional)</label>
+                  <input type="text" data-field="caption" value="${item.caption || ''}" placeholder="Keterangan gambar..." class="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2.5 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]" />
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Event delegation on card
+        card.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          const actionBtn = target.closest<HTMLButtonElement>('[data-action]');
+          if (!actionBtn) return;
+
+          const action = actionBtn.dataset.action;
+          if (action === 'set-cover') {
+            if (item.mediaId) {
+              currentCoverId = item.mediaId;
+              render();
+            }
+          } else if (action === 'move-up' && index > 0) {
+            const temp = items[index];
+            items[index] = items[index - 1];
+            items[index - 1] = temp;
+            render();
+          } else if (action === 'move-down' && index < items.length - 1) {
+            const temp = items[index];
+            items[index] = items[index + 1];
+            items[index + 1] = temp;
+            render();
+          } else if (action === 'remove') {
+            items.splice(index, 1);
+            render();
+          }
+        });
+
+        // Inputs change
+        card.querySelectorAll<HTMLInputElement>('[data-field]').forEach((inp) => {
+          inp.addEventListener('input', () => {
+            const field = inp.dataset.field as 'alt' | 'caption';
+            items[index][field] = inp.value;
+            syncState();
+          });
+        });
+
+        listEl.appendChild(card);
+      });
+    };
+
+    // Initial render
+    render();
+
+    // Multi-upload handler
+    uploadInput.addEventListener('change', async () => {
+      const files = Array.from(uploadInput.files || []);
+      if (files.length === 0) return;
+
+      uploadingBanner.classList.remove('hidden');
+
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          uploadingText.textContent = `Mengunggah (${i + 1}/${files.length}): ${file.name}...`;
+
+          const fd = new FormData();
+          fd.append('file', file);
+
+          const res = await fetch('/api/media/upload', {
+            method: 'POST',
+            body: fd,
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Gagal mengunggah ${file.name}`);
+          }
+
+          const data = await res.json();
+          const uploaded = data.media;
+
+          items.push({
+            mediaId: uploaded.id,
+            url: uploaded.publicUrl,
+            alt: uploaded.altId || uploaded.altEn || '',
+            caption: '',
+            filename: uploaded.filename,
+          });
+
+          // If no cover selected, first uploaded item becomes cover
+          if (!currentCoverId && uploaded.id) {
+            currentCoverId = uploaded.id;
+          }
+
+          // Prepend to media library dialog grid
+          if (libraryGrid) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.libItem = 'true';
+            btn.dataset.mediaId = String(uploaded.id);
+            btn.dataset.mediaUrl = uploaded.publicUrl;
+            btn.dataset.mediaName = uploaded.filename;
+            btn.dataset.mediaAlt = uploaded.altId || uploaded.altEn || uploaded.filename;
+            btn.className = 'group relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-left hover:border-[var(--accent)] cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)]';
+            btn.innerHTML = `
+              <div class="aspect-video w-full overflow-hidden bg-black/20">
+                <img src="${uploaded.publicUrl}" alt="${uploaded.filename}" loading="lazy" class="h-full w-full object-cover transition-transform group-hover:scale-105" />
+              </div>
+              <div class="p-2">
+                <span class="block truncate font-mono text-[11px] text-[var(--text-secondary)]">${uploaded.filename}</span>
+              </div>
+            `;
+            libraryGrid.prepend(btn);
+          }
+        }
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : 'Upload gagal.');
+      } finally {
+        uploadingBanner.classList.add('hidden');
+        uploadInput.value = '';
+        render();
+      }
+    });
+
+    // Library dialog handlers
+    openLibraryBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      libraryGrid.querySelectorAll<HTMLElement>('[data-lib-item]').forEach((b) => b.classList.remove('hidden'));
+      dialog.showModal();
+    });
+
+    closeLibraryBtn.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.trim().toLowerCase();
+      libraryGrid.querySelectorAll<HTMLElement>('[data-lib-item]').forEach((b) => {
+        const name = (b.dataset.mediaName || '').toLowerCase();
+        b.classList.toggle('hidden', !!term && !name.includes(term));
+      });
+    });
+
+    libraryGrid.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-lib-item]');
+      if (!btn) return;
+
+      const mediaId = Number(btn.dataset.mediaId);
+      const url = btn.dataset.mediaUrl || '';
+      const name = btn.dataset.mediaName || '';
+      const alt = btn.dataset.mediaAlt || '';
+
+      // Check if already in items
+      const existing = items.find((it) => it.mediaId === mediaId || it.url === url);
+      if (existing) {
+        // Just flash notification or set as cover
+        if (!currentCoverId) {
+          currentCoverId = mediaId;
+        }
+      } else {
+        items.push({
+          mediaId: mediaId || null,
+          url,
+          alt,
+          caption: '',
+          filename: name,
+        });
+        if (!currentCoverId && mediaId) {
+          currentCoverId = mediaId;
+        }
+      }
+
+      render();
+      dialog.close();
+    });
+  });
+</script>
