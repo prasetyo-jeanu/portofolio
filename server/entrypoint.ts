@@ -148,9 +148,33 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
+// Automatic one-time cutover check: if SQLite file exists and .mysql-migrated sentinel does not exist
+const dataDir = path.dirname(env.DATABASE_PATH);
+const sentinelFile = path.join(dataDir, '.mysql-migrated');
+
+if (fs.existsSync(env.DATABASE_PATH) && !fs.existsSync(sentinelFile)) {
+  console.log('[entrypoint] Detected existing SQLite database and no .mysql-migrated marker.');
+  console.log('[entrypoint] Executing automatic one-time migration to MySQL...');
+  try {
+    const { migrateSqliteToMysql } = await import('../scripts/migrate-sqlite-to-mysql');
+    const result = await migrateSqliteToMysql(env.DATABASE_PATH);
+    if (result.migrated) {
+      fs.writeFileSync(sentinelFile, new Date().toISOString(), 'utf-8');
+      console.log('[entrypoint] Auto-migration completed. Marker created at:', sentinelFile);
+    }
+  } catch (err) {
+    console.error('[entrypoint] Auto-migration error:', err);
+  }
+}
+
 server.listen(env.PORT, env.HOST, () => {
   console.log(`Portfolio server listening on http://${env.HOST}:${env.PORT}`);
   console.log(`Primary public dir: ${env.PUBLIC_DIST_DIR}`);
   console.log(`Fallback client dir: ${FALLBACK_DIST_CLIENT}`);
-  console.log(`SQLite database: ${env.DATABASE_PATH}`);
+  if (env.DATABASE_URL) {
+    const sanitizedUrl = env.DATABASE_URL.replace(/:([^:@]+)@/, ':****@');
+    console.log(`MySQL database URL: ${sanitizedUrl}`);
+  } else {
+    console.log(`MySQL host: ${env.MYSQL_HOST}:${env.MYSQL_PORT}`);
+  }
 });
