@@ -22,5 +22,10 @@ async function main() {
 
 main().catch((err) => {
   console.error('Migration failed:', err);
+  if (err?.code === 'ETIMEDOUT' || err?.code === 'ECONNREFUSED' || String(err).includes('ETIMEDOUT')) {
+    console.error('\n[db troubleshooting] Connection to MySQL timed out or was refused.');
+    console.error('[db troubleshooting] 1. Verify DATABASE_URL is set in Easypanel Environment Variables.');
+    console.error('[db troubleshooting] 2. In Easypanel/Docker, use internal service name (e.g. mysql:3306) rather than public IP (217.217.255.58:3307), as Docker drops hairpin connections to host public IP.');
+  }
   process.exit(1);
 });

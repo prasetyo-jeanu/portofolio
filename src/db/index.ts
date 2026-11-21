@@ -9,6 +9,12 @@ let dbInstance: MySql2Database<typeof schema> | null = null;
 export function getPool(): mysql.Pool {
   if (!pool) {
     if (env.DATABASE_URL) {
+      try {
+        const parsed = new URL(env.DATABASE_URL);
+        console.log(`[db] Connecting to MySQL via DATABASE_URL (host: ${parsed.hostname}, port: ${parsed.port || 3306}, database: ${parsed.pathname.replace(/^\//, '')}, user: ${parsed.username})`);
+      } catch {
+        console.log(`[db] Connecting to MySQL via DATABASE_URL`);
+      }
       pool = mysql.createPool({
         uri: env.DATABASE_URL,
         waitForConnections: true,
@@ -16,8 +22,10 @@ export function getPool(): mysql.Pool {
         queueLimit: 0,
         enableKeepAlive: true,
         keepAliveInitialDelay: 10000,
+        connectTimeout: 10000,
       });
     } else {
+      console.warn(`[db] WARNING: DATABASE_URL is not set! Falling back to host: ${env.MYSQL_HOST}:${env.MYSQL_PORT}, database: ${env.MYSQL_DATABASE}, user: ${env.MYSQL_USER}`);
       pool = mysql.createPool({
         host: env.MYSQL_HOST,
         port: env.MYSQL_PORT,
@@ -29,6 +37,7 @@ export function getPool(): mysql.Pool {
         queueLimit: 0,
         enableKeepAlive: true,
         keepAliveInitialDelay: 10000,
+        connectTimeout: 10000,
       });
     }
   }
