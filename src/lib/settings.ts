@@ -83,7 +83,7 @@ export const DEFAULT_SITE_SETTINGS: SiteProfileSettings = {
   gitlabUrl: 'https://gitlab.com/',
   linkedinUrl: 'https://linkedin.com/',
   xUrl: '',
-  coreStack: ['TypeScript', 'Astro', 'Bun', 'Node.js', 'SQLite', 'PostgreSQL', 'Tailwind CSS', 'Docker'],
+  coreStack: ['TypeScript', 'Astro', 'Bun', 'Nodejs', 'SQLite', 'PostgreSQL', 'Tailwind CSS', 'Docker'],
   expertiseId: [
     {
       title: 'Aplikasi Web Fullstack',
@@ -118,7 +118,7 @@ export const DEFAULT_SITE_SETTINGS: SiteProfileSettings = {
       role: 'Fullstack Web Developer',
       company: '',
       logo: '',
-      summary: 'Merancang dan memelihara aplikasi bisnis, API gateway, serta alat otomasi berbasis TypeScript dan Node.js/Bun.',
+      summary: 'Merancang dan memelihara aplikasi bisnis, API gateway, serta alat otomasi berbasis TypeScript dan Nodejs/Bun.',
     },
   ],
   experienceEn: [
@@ -127,7 +127,7 @@ export const DEFAULT_SITE_SETTINGS: SiteProfileSettings = {
       role: 'Fullstack Web Developer',
       company: '',
       logo: '',
-      summary: 'Architecting and maintaining business applications, API gateways, and automation tooling with TypeScript and Node.js/Bun.',
+      summary: 'Architecting and maintaining business applications, API gateways, and automation tooling with TypeScript and Nodejs/Bun.',
     },
   ],
 };

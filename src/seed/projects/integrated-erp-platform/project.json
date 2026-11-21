@@ -7,9 +7,9 @@
   "is_confidential": false,
   "status": "published",
   "tech_stack_tags": [
-    "Node.js",
+    "Nodejs",
     "Fastify",
-    "Nuxt.js",
+    "Nuxtjs",
     "TypeScript",
     "Prisma",
     "PostgreSQL",

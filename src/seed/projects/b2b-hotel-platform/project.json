@@ -9,7 +9,7 @@
   "tech_stack_tags": [
     "PHP",
     "Lumen",
-    "Node.js",
+    "Nodejs",
     "Express",
     "MySQL",
     "MongoDB",
@@ -35,7 +35,7 @@
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Built a CMS for 20,000 domestic and international hotels and connected vendor APIs to clients through an internal gateway using PHP Lumen, Slim, and Node.js."
+          "text": "Built a CMS for 20,000 domestic and international hotels and connected vendor APIs to clients through an internal gateway using PHP Lumen, Slim, and Nodejs."
         },
         {
           "label": "My Approach",
@@ -55,7 +55,7 @@
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Membangun CMS untuk mengelola 20.000 hotel, baik domestik maupun internasional. Saya juga mengintegrasikan API dari berbagai vendor agar dapat diakses oleh klien melalui gateway internal menggunakan PHP Lumen, Slim, dan Node.js."
+          "text": "Membangun CMS untuk mengelola 20.000 hotel, baik domestik maupun internasional. Saya juga mengintegrasikan API dari berbagai vendor agar dapat diakses oleh klien melalui gateway internal menggunakan PHP Lumen, Slim, dan Nodejs."
         },
         {
           "label": "Pendekatan teknis",

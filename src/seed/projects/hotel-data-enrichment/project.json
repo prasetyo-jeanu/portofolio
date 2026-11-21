@@ -8,9 +8,9 @@
   "status": "published",
   "tech_stack_tags": [
     "Python Scrapy",
-    "Node.js",
+    "Nodejs",
     "Express",
-    "Vue.js",
+    "Vuejs",
     "MySQL",
     "MongoDB",
     "Bootstrap"
@@ -30,11 +30,11 @@
       "title": "Enriching Hotel Data with 100,000+ Images",
       "slug": "hotel-data-enrichment",
       "role": "Full Stack Developer (Core Architecture & Backend)",
-      "summary": "Built a hotel data enrichment pipeline with Python Scrapy, Express, and Vue.js organizing property metadata and 100,000+ reusable hotel images.",
+      "summary": "Built a hotel data enrichment pipeline with Python Scrapy, Express, and Vuejs organizing property metadata and 100,000+ reusable hotel images.",
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Built a hotel enrichment pipeline using Python Scrapy, Express, and Vue.js to transform Tripadvisor listings into structured hotel records and organized image collections."
+          "text": "Built a hotel enrichment pipeline using Python Scrapy, Express, and Vuejs to transform Tripadvisor listings into structured hotel records and organized image collections."
         },
         {
           "label": "My Approach",
@@ -50,11 +50,11 @@
       "title": "Memperkaya Data Hotel dengan Lebih dari 100 Ribu Gambar",
       "slug": "hotel-data-enrichment",
       "role": "Full Stack Developer (Arsitektur Inti & Backend)",
-      "summary": "Membangun pipeline pengayaan data hotel menggunakan Python Scrapy, Express, dan Vue.js untuk mengelola informasi properti serta lebih dari 100.000 gambar hotel yang dapat digunakan kembali.",
+      "summary": "Membangun pipeline pengayaan data hotel menggunakan Python Scrapy, Express, dan Vuejs untuk mengelola informasi properti serta lebih dari 100.000 gambar hotel yang dapat digunakan kembali.",
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Membangun pipeline pengayaan data hotel menggunakan Python Scrapy, Express, dan Vue.js. Sistem ini mengolah data listing dari Tripadvisor menjadi data hotel yang lebih terstruktur, lengkap dengan koleksi gambar yang tertata."
+          "text": "Membangun pipeline pengayaan data hotel menggunakan Python Scrapy, Express, dan Vuejs. Sistem ini mengolah data listing dari Tripadvisor menjadi data hotel yang lebih terstruktur, lengkap dengan koleksi gambar yang tertata."
         },
         {
           "label": "Pendekatan teknis",

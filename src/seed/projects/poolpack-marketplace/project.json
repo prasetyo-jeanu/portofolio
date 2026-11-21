@@ -7,10 +7,10 @@
   "is_confidential": false,
   "status": "published",
   "tech_stack_tags": [
-    "Node.js",
+    "Nodejs",
     "Fastify",
-    "Vue.js",
-    "Nuxt.js",
+    "Vuejs",
+    "Nuxtjs",
     "Tailwind CSS",
     "PostgreSQL",
     "MySQL",
@@ -36,7 +36,7 @@
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Led a team of six developers and DevOps engineers to build Poolpack.com, owning core architecture and backend delivery with Fastify, Nuxt.js, and PostgreSQL."
+          "text": "Led a team of six developers and DevOps engineers to build Poolpack.com, owning core architecture and backend delivery with Fastify, Nuxtjs, and PostgreSQL."
         },
         {
           "label": "My Approach",
@@ -56,7 +56,7 @@
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Memimpin enam developer dan engineer DevOps dalam membangun Poolpack.com. Saya bertanggung jawab atas arsitektur inti sistem dan pengembangan backend menggunakan Fastify, Nuxt.js, dan PostgreSQL."
+          "text": "Memimpin enam developer dan engineer DevOps dalam membangun Poolpack.com. Saya bertanggung jawab atas arsitektur inti sistem dan pengembangan backend menggunakan Fastify, Nuxtjs, dan PostgreSQL."
         },
         {
           "label": "Pendekatan teknis",

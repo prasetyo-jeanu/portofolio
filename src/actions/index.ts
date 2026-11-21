@@ -59,7 +59,7 @@ async function syncTags(
   const cleaned = Array.from(
     new Set(
       rawTagNames
-        .map((t) => t.trim())
+        .map((t) => t.trim().replace(/\.js\b/gi, 'js'))
         .filter((t) => t.length > 0 && t.length <= 48),
     ),
   );
@@ -71,6 +71,9 @@ async function syncTags(
     if (!tagSlug) continue;
     const existing = await db.select().from(tags).where(eq(tags.slug, tagSlug)).limit(1);
     if (existing.length > 0) {
+      if (existing[0].name !== name) {
+        await db.update(tags).set({ name }).where(eq(tags.id, existing[0].id));
+      }
       tagIds.push(existing[0].id);
     } else {
       const [result] = await db

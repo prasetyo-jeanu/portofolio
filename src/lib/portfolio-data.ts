@@ -75,7 +75,7 @@ export function normalizePortfolioTags(rawTags: string[]): string[] {
   const seen = new Set<string>();
   const normalized: string[] = [];
   for (const tag of rawTags) {
-    const clean = tag.trim();
+    const clean = tag.trim().replace(/\.js\b/gi, 'js');
     if (!clean) continue;
     const key = clean.toLowerCase();
     if (seen.has(key)) continue;

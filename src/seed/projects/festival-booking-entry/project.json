@@ -9,7 +9,7 @@
   "tech_stack_tags": [
     "PHP",
     "Lumen",
-    "Vue.js",
+    "Vuejs",
     "MySQL",
     "Kafka"
   ],
@@ -32,7 +32,7 @@
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Built a mobile-friendly event registration interface and integrated booking with entry gates using Vue.js, PHP Lumen, and MySQL as the sole developer."
+          "text": "Built a mobile-friendly event registration interface and integrated booking with entry gates using Vuejs, PHP Lumen, and MySQL as the sole developer."
         },
         {
           "label": "My Approach",
@@ -52,7 +52,7 @@
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Membangun antarmuka registrasi acara yang nyaman digunakan melalui perangkat mobile serta mengintegrasikan sistem pemesanan dengan gerbang masuk. Seluruh pengembangan saya kerjakan sendiri menggunakan Vue.js, PHP Lumen, dan MySQL."
+          "text": "Membangun antarmuka registrasi acara yang nyaman digunakan melalui perangkat mobile serta mengintegrasikan sistem pemesanan dengan gerbang masuk. Seluruh pengembangan saya kerjakan sendiri menggunakan Vuejs, PHP Lumen, dan MySQL."
         },
         {
           "label": "Pendekatan teknis",

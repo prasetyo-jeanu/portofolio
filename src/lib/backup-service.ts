@@ -1,11 +1,11 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-import { sql } from 'drizzle-orm';
-import { db } from '../db';
-import * as schema from '../db/schema';
-import { env } from './env';
-import { migrateSqliteToMysql } from '../../scripts/migrate-sqlite-to-mysql';
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { sql } from "drizzle-orm";
+import { db } from "../db";
+import * as schema from "../db/schema";
+import { env } from "./env";
+import { migrateSqliteToMysql } from "../../scripts/migrate-sqlite-to-mysql";
 
 export interface RestoreResult {
   success: boolean;
@@ -18,13 +18,13 @@ export interface RestoreResult {
  * of all MySQL tables and the uploads directory.
  */
 export async function createBackupArchive(): Promise<string> {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-backup-'));
-  const exportJsonPath = path.join(tempDir, 'data-export.json');
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "portfolio-backup-"));
+  const exportJsonPath = path.join(tempDir, "data-export.json");
 
   // 1. Export all table data to JSON
   const data = {
-    version: '2.0.0',
-    dialect: 'mysql',
+    version: "2.0.0",
+    dialect: "mysql",
     timestamp: new Date().toISOString(),
     tables: {
       users: await db.select().from(schema.users),
@@ -34,7 +34,9 @@ export async function createBackupArchive(): Promise<string> {
       projects: await db.select().from(schema.projects),
       projectTranslations: await db.select().from(schema.projectTranslations),
       freelanceProjects: await db.select().from(schema.freelanceProjects),
-      freelanceProjectTranslations: await db.select().from(schema.freelanceProjectTranslations),
+      freelanceProjectTranslations: await db
+        .select()
+        .from(schema.freelanceProjectTranslations),
       tags: await db.select().from(schema.tags),
       postTags: await db.select().from(schema.postTags),
       projectTags: await db.select().from(schema.projectTags),
@@ -44,10 +46,10 @@ export async function createBackupArchive(): Promise<string> {
     },
   };
 
-  fs.writeFileSync(exportJsonPath, JSON.stringify(data, null, 2), 'utf-8');
+  fs.writeFileSync(exportJsonPath, JSON.stringify(data, null, 2), "utf-8");
 
   // 2. Prepare tar archive path
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const archivePath = path.join(tempDir, `portfolio-backup-${stamp}.tar.gz`);
 
   const uploadsDir = env.UPLOAD_DIR;
@@ -59,13 +61,13 @@ export async function createBackupArchive(): Promise<string> {
   const uploadsBase = path.basename(uploadsDir);
 
   const proc = Bun.spawn([
-    'tar',
-    '-czf',
+    "tar",
+    "-czf",
     archivePath,
-    '-C',
+    "-C",
     tempDir,
-    'data-export.json',
-    '-C',
+    "data-export.json",
+    "-C",
     uploadsParent,
     uploadsBase,
   ]);
@@ -73,7 +75,9 @@ export async function createBackupArchive(): Promise<string> {
   const exitCode = await proc.exited;
   if (exitCode !== 0) {
     const errText = await new Response(proc.stderr).text();
-    throw new Error(`Failed to create backup archive (exit code ${exitCode}): ${errText}`);
+    throw new Error(
+      `Failed to create backup archive (exit code ${exitCode}): ${errText}`,
+    );
   }
 
   // Cleanup temporary JSON file
@@ -93,13 +97,13 @@ export async function restoreFromArchive(
   originalFilename: string,
 ): Promise<RestoreResult> {
   const lowerName = originalFilename.toLowerCase();
-  const isTar = lowerName.endsWith('.tar.gz') || lowerName.endsWith('.tgz');
-  const isDb = lowerName.endsWith('.db');
+  const isTar = lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz");
+  const isDb = lowerName.endsWith(".db");
 
   if (!isTar && !isDb) {
     return {
       success: false,
-      message: 'Invalid file format. Supported formats: .tar.gz, .tgz, .db',
+      message: "Invalid file format. Supported formats: .tar.gz, .tgz, .db",
     };
   }
 
@@ -108,29 +112,40 @@ export async function restoreFromArchive(
   try {
     const tempSafety = await createBackupArchive();
     const dataDir = path.dirname(env.DATABASE_PATH);
-    const backupDir = path.join(dataDir, 'backups');
+    const backupDir = path.join(dataDir, "backups");
     fs.mkdirSync(backupDir, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     safetyBackupPath = path.join(backupDir, `pre-restore-${stamp}.tar.gz`);
     fs.copyFileSync(tempSafety, safetyBackupPath);
     try {
       fs.unlinkSync(tempSafety);
     } catch {}
   } catch (e) {
-    console.warn('[restore] Warning: Failed to create pre-restore safety backup:', e);
+    console.warn(
+      "[restore] Warning: Failed to create pre-restore safety backup:",
+      e,
+    );
   }
 
-  const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-restore-staging-'));
+  const stagingDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "portfolio-restore-staging-"),
+  );
 
   try {
-    let candidateDbPath = '';
-    let jsonExportPath = '';
+    let candidateDbPath = "";
+    let jsonExportPath = "";
 
     if (isDb) {
       candidateDbPath = archiveFilePath;
     } else {
       // Extract tar to staging
-      const proc = Bun.spawn(['tar', '-xzf', archiveFilePath, '-C', stagingDir]);
+      const proc = Bun.spawn([
+        "tar",
+        "-xzf",
+        archiveFilePath,
+        "-C",
+        stagingDir,
+      ]);
       const exitCode = await proc.exited;
       if (exitCode !== 0) {
         const errText = await new Response(proc.stderr).text();
@@ -138,24 +153,24 @@ export async function restoreFromArchive(
       }
 
       // Check if modern data-export.json exists
-      const directJson = path.join(stagingDir, 'data-export.json');
+      const directJson = path.join(stagingDir, "data-export.json");
       if (fs.existsSync(directJson)) {
         jsonExportPath = directJson;
       }
 
       // Check for legacy portfolio.db or any .db inside stagingDir
-      const directDb = path.join(stagingDir, 'portfolio.db');
+      const directDb = path.join(stagingDir, "portfolio.db");
       if (fs.existsSync(directDb)) {
         candidateDbPath = directDb;
       } else {
-        const found = fs.readdirSync(stagingDir).find((f) => f.endsWith('.db'));
+        const found = fs.readdirSync(stagingDir).find((f) => f.endsWith(".db"));
         if (found) {
           candidateDbPath = path.join(stagingDir, found);
         }
       }
 
       // Restore uploads directory if present
-      const stagingUploads = path.join(stagingDir, 'uploads');
+      const stagingUploads = path.join(stagingDir, "uploads");
       if (fs.existsSync(stagingUploads)) {
         fs.mkdirSync(env.UPLOAD_DIR, { recursive: true });
         fs.cpSync(stagingUploads, env.UPLOAD_DIR, { recursive: true });
@@ -164,7 +179,7 @@ export async function restoreFromArchive(
 
     // 2. Perform restoration
     if (jsonExportPath) {
-      const content = fs.readFileSync(jsonExportPath, 'utf-8');
+      const content = fs.readFileSync(jsonExportPath, "utf-8");
       const dump = JSON.parse(content);
       const tables = dump.tables || {};
 
@@ -220,7 +235,10 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.postTranslations) && tables.postTranslations.length > 0) {
+        if (
+          Array.isArray(tables.postTranslations) &&
+          tables.postTranslations.length > 0
+        ) {
           for (const r of tables.postTranslations) {
             await tx.insert(schema.postTranslations).values({
               ...r,
@@ -242,7 +260,10 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.projectTranslations) && tables.projectTranslations.length > 0) {
+        if (
+          Array.isArray(tables.projectTranslations) &&
+          tables.projectTranslations.length > 0
+        ) {
           for (const r of tables.projectTranslations) {
             await tx.insert(schema.projectTranslations).values({
               ...r,
@@ -253,7 +274,10 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.freelanceProjects) && tables.freelanceProjects.length > 0) {
+        if (
+          Array.isArray(tables.freelanceProjects) &&
+          tables.freelanceProjects.length > 0
+        ) {
           for (const r of tables.freelanceProjects) {
             await tx.insert(schema.freelanceProjects).values({
               ...r,
@@ -264,7 +288,10 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.freelanceProjectTranslations) && tables.freelanceProjectTranslations.length > 0) {
+        if (
+          Array.isArray(tables.freelanceProjectTranslations) &&
+          tables.freelanceProjectTranslations.length > 0
+        ) {
           for (const r of tables.freelanceProjectTranslations) {
             await tx.insert(schema.freelanceProjectTranslations).values({
               ...r,
@@ -290,13 +317,19 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.projectTags) && tables.projectTags.length > 0) {
+        if (
+          Array.isArray(tables.projectTags) &&
+          tables.projectTags.length > 0
+        ) {
           for (const r of tables.projectTags) {
             await tx.insert(schema.projectTags).values(r);
           }
         }
 
-        if (Array.isArray(tables.siteSettings) && tables.siteSettings.length > 0) {
+        if (
+          Array.isArray(tables.siteSettings) &&
+          tables.siteSettings.length > 0
+        ) {
           for (const r of tables.siteSettings) {
             await tx.insert(schema.siteSettings).values({
               ...r,
@@ -305,7 +338,10 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.urlRedirects) && tables.urlRedirects.length > 0) {
+        if (
+          Array.isArray(tables.urlRedirects) &&
+          tables.urlRedirects.length > 0
+        ) {
           for (const r of tables.urlRedirects) {
             await tx.insert(schema.urlRedirects).values({
               ...r,
@@ -314,7 +350,10 @@ export async function restoreFromArchive(
           }
         }
 
-        if (Array.isArray(tables.publishingJobs) && tables.publishingJobs.length > 0) {
+        if (
+          Array.isArray(tables.publishingJobs) &&
+          tables.publishingJobs.length > 0
+        ) {
           for (const r of tables.publishingJobs) {
             await tx.insert(schema.publishingJobs).values({
               ...r,
@@ -329,26 +368,31 @@ export async function restoreFromArchive(
 
       return {
         success: true,
-        message: 'Data successfully restored from JSON archive. Please publish the static site to apply updates.',
+        message:
+          "Data successfully restored from JSON archive. Please publish the static site to apply updates.",
         safetyBackupPath,
       };
     } else if (candidateDbPath && fs.existsSync(candidateDbPath)) {
       // Legacy SQLite archive restoration
-      console.log(`[restore] Detected legacy SQLite archive at ${candidateDbPath}. Running migration...`);
+      console.log(
+        `[restore] Detected legacy SQLite archive at ${candidateDbPath}. Running migration...`,
+      );
       const result = await migrateSqliteToMysql(candidateDbPath);
       return {
         success: result.migrated,
         message: result.migrated
-          ? 'Legacy SQLite data successfully migrated into MySQL! Please publish the static site to apply updates.'
-          : 'Legacy SQLite restore failed.',
+          ? "Legacy SQLite data successfully migrated into MySQL! Please publish the static site to apply updates."
+          : "Legacy SQLite restore failed.",
         safetyBackupPath,
       };
     } else {
-      throw new Error('No valid database payload (data-export.json or portfolio.db) found in archive.');
+      throw new Error(
+        "No valid database payload (data-export.json or portfolio.db) found in archive.",
+      );
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error('Restore error:', errorMsg);
+    console.error("Restore error:", errorMsg);
     return {
       success: false,
       message: `Restore failed: ${errorMsg}.`,

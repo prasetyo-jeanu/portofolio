@@ -8,7 +8,7 @@
   "status": "published",
   "tech_stack_tags": [
     "React",
-    "Next.js",
+    "Nextjs",
     "Tailwind CSS",
     "MUI",
     "PHP",
@@ -30,11 +30,11 @@
       "title": "Bringing Hotel Booking to 11 Mobile Apps",
       "slug": "white-label-hotel-mobile",
       "role": "Frontend Developer (API & Mobile WebView Integration)",
-      "summary": "Delivered a themeable React/Next.js WebView hotel booking frontend embedded across 11 apps including myTelkomsel, Astropay, and Flip.",
+      "summary": "Delivered a themeable React/Nextjs WebView hotel booking frontend embedded across 11 apps including myTelkomsel, Astropay, and Flip.",
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Integrated backend hotel APIs into a white-label React and Next.js booking frontend, embedded through WebViews across client mobile apps."
+          "text": "Integrated backend hotel APIs into a white-label React and Nextjs booking frontend, embedded through WebViews across client mobile apps."
         },
         {
           "label": "My Approach",
@@ -50,11 +50,11 @@
       "title": "Menghadirkan Fitur Pemesanan Hotel di 11 Aplikasi Mobile",
       "slug": "white-label-hotel-mobile",
       "role": "Frontend Developer (Integrasi API & Mobile WebView)",
-      "summary": "Mengembangkan frontend pemesanan hotel berbasis React/Next.js yang dapat disesuaikan dengan tema masing-masing aplikasi. Frontend ini ditanamkan melalui WebView ke dalam 11 aplikasi, termasuk myTelkomsel, Astropay, dan Flip.",
+      "summary": "Mengembangkan frontend pemesanan hotel berbasis React/Nextjs yang dapat disesuaikan dengan tema masing-masing aplikasi. Frontend ini ditanamkan melalui WebView ke dalam 11 aplikasi, termasuk myTelkomsel, Astropay, dan Flip.",
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Mengintegrasikan backend API hotel ke dalam frontend pemesanan berbasis React dan Next.js dengan konsep white-label. Sistem ini kemudian ditanamkan melalui WebView ke berbagai aplikasi mobile milik klien."
+          "text": "Mengintegrasikan backend API hotel ke dalam frontend pemesanan berbasis React dan Nextjs dengan konsep white-label. Sistem ini kemudian ditanamkan melalui WebView ke berbagai aplikasi mobile milik klien."
         },
         {
           "label": "Pendekatan teknis",

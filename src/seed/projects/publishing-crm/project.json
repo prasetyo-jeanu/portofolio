@@ -10,7 +10,7 @@
     "PHP",
     "Laravel",
     "CodeIgniter",
-    "Vue.js",
+    "Vuejs",
     "MySQL",
     "Bootstrap",
     "Docker"
@@ -34,7 +34,7 @@
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Designed and built a publishing CRM with Laravel, CodeIgniter, Vue.js, and MySQL, connecting leads, prospective authors, active authors, production, and repeat orders."
+          "text": "Designed and built a publishing CRM with Laravel, CodeIgniter, Vuejs, and MySQL, connecting leads, prospective authors, active authors, production, and repeat orders."
         },
         {
           "label": "My Approach",
@@ -54,7 +54,7 @@
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Merancang dan membangun sistem CRM untuk penerbitan menggunakan Laravel, CodeIgniter, Vue.js, dan MySQL. Sistem ini menghubungkan data prospek, calon penulis, penulis aktif, proses produksi buku, hingga pemesanan ulang."
+          "text": "Merancang dan membangun sistem CRM untuk penerbitan menggunakan Laravel, CodeIgniter, Vuejs, dan MySQL. Sistem ini menghubungkan data prospek, calon penulis, penulis aktif, proses produksi buku, hingga pemesanan ulang."
         },
         {
           "label": "Pendekatan teknis",

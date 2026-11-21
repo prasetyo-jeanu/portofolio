@@ -9,7 +9,7 @@
   "tech_stack_tags": [
     "PHP",
     "Lumen",
-    "Vue.js",
+    "Vuejs",
     "MySQL",
     "Kafka"
   ],
@@ -32,7 +32,7 @@
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Built an integrated booking and gate access system for Prambanan and Borobudur as the sole developer, using PHP Lumen, Vue.js, and MySQL."
+          "text": "Built an integrated booking and gate access system for Prambanan and Borobudur as the sole developer, using PHP Lumen, Vuejs, and MySQL."
         },
         {
           "label": "My Approach",
@@ -52,7 +52,7 @@
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Membangun sistem pemesanan tiket dan akses gerbang masuk yang terintegrasi untuk Candi Prambanan dan Candi Borobudur. Seluruh pengembangan saya kerjakan sendiri menggunakan PHP Lumen, Vue.js, dan MySQL."
+          "text": "Membangun sistem pemesanan tiket dan akses gerbang masuk yang terintegrasi untuk Candi Prambanan dan Candi Borobudur. Seluruh pengembangan saya kerjakan sendiri menggunakan PHP Lumen, Vuejs, dan MySQL."
         },
         {
           "label": "Pendekatan teknis",

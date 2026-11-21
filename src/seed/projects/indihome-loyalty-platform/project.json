@@ -7,9 +7,9 @@
   "is_confidential": false,
   "status": "published",
   "tech_stack_tags": [
-    "Node.js",
+    "Nodejs",
     "Fastify",
-    "Vue.js",
+    "Vuejs",
     "PostgreSQL",
     "Kafka",
     "Redis",
@@ -34,7 +34,7 @@
       "portfolio_copy": [
         {
           "label": "What I Built",
-          "text": "Led three developers in rebuilding IndiHome’s loyalty CRM with Fastify, Vue.js, and PostgreSQL to address point calculation errors and delays of up to 30 days."
+          "text": "Led three developers in rebuilding IndiHome’s loyalty CRM with Fastify, Vuejs, and PostgreSQL to address point calculation errors and delays of up to 30 days."
         },
         {
           "label": "My Approach",
@@ -54,7 +54,7 @@
       "portfolio_copy": [
         {
           "label": "Apa yang dibangun",
-          "text": "Memimpin tiga developer dalam membangun ulang sistem CRM loyalitas IndiHome menggunakan Fastify, Vue.js, dan PostgreSQL. Pekerjaan ini dilakukan untuk mengatasi kesalahan perhitungan poin dan keterlambatan pemrosesan yang sebelumnya bisa mencapai 30 hari."
+          "text": "Memimpin tiga developer dalam membangun ulang sistem CRM loyalitas IndiHome menggunakan Fastify, Vuejs, dan PostgreSQL. Pekerjaan ini dilakukan untuk mengatasi kesalahan perhitungan poin dan keterlambatan pemrosesan yang sebelumnya bisa mencapai 30 hari."
         },
         {
           "label": "Pendekatan teknis",

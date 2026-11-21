@@ -1,12 +1,15 @@
-import { describe, expect, test, beforeAll, afterAll } from 'bun:test';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-import { Database } from 'bun:sqlite';
-import { createBackupArchive, restoreFromArchive } from '../src/lib/backup-service';
-import { closeDb } from '../src/db';
+import { describe, expect, test, beforeAll, afterAll } from "bun:test";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { Database } from "bun:sqlite";
+import {
+  createBackupArchive,
+  restoreFromArchive,
+} from "../src/lib/backup-service";
+import { closeDb } from "../src/db";
 
-describe('Backup and Restore Service', () => {
+describe("Backup and Restore Service", () => {
   beforeAll(async () => {
     await closeDb();
   });
@@ -15,44 +18,45 @@ describe('Backup and Restore Service', () => {
     await closeDb();
   });
 
-  test('rejects unsupported file formats', async () => {
-    const result = await restoreFromArchive('dummy.txt', 'dummy.txt');
+  test("rejects unsupported file formats", async () => {
+    const result = await restoreFromArchive("dummy.txt", "dummy.txt");
     expect(result.success).toBe(false);
-    expect(result.message).toContain('Invalid file format');
+    expect(result.message).toContain("Invalid file format");
   });
 
-  test(
-    'creates a valid .tar.gz backup archive containing data-export.json',
-    async () => {
-      const archivePath = await createBackupArchive();
-      expect(fs.existsSync(archivePath)).toBe(true);
-      expect(archivePath.endsWith('.tar.gz')).toBe(true);
+  test("creates a valid .tar.gz backup archive containing data-export.json", async () => {
+    const archivePath = await createBackupArchive();
+    expect(fs.existsSync(archivePath)).toBe(true);
+    expect(archivePath.endsWith(".tar.gz")).toBe(true);
 
-      const stats = fs.statSync(archivePath);
-      expect(stats.size).toBeGreaterThan(100);
+    const stats = fs.statSync(archivePath);
+    expect(stats.size).toBeGreaterThan(100);
 
-      // Verify it contains data-export.json and uploads
-      const proc = Bun.spawn(['tar', '-tzf', archivePath]);
-      const output = await new Response(proc.stdout).text();
-      expect(output).toContain('data-export.json');
-      expect(output).toContain('uploads');
+    // Verify it contains data-export.json and uploads
+    const proc = Bun.spawn(["tar", "-tzf", archivePath]);
+    const output = await new Response(proc.stdout).text();
+    expect(output).toContain("data-export.json");
+    expect(output).toContain("uploads");
 
-      // Test restoring from this freshly generated archive
-      const restoreRes = await restoreFromArchive(archivePath, path.basename(archivePath));
-      expect(restoreRes.success).toBe(true);
+    // Test restoring from this freshly generated archive
+    const restoreRes = await restoreFromArchive(
+      archivePath,
+      path.basename(archivePath),
+    );
+    expect(restoreRes.success).toBe(true);
 
-      // Cleanup
-      try {
-        fs.unlinkSync(archivePath);
-        fs.rmdirSync(path.dirname(archivePath));
-      } catch {}
-    },
-    20000,
-  );
+    // Cleanup
+    try {
+      fs.unlinkSync(archivePath);
+      fs.rmdirSync(path.dirname(archivePath));
+    } catch {}
+  }, 20000);
 
-  test('supports restoring from a legacy SQLite .db file', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-legacy-restore-'));
-    const dummyDbPath = path.join(tempDir, 'dummy.db');
+  test("supports restoring from a legacy SQLite .db file", async () => {
+    const tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "test-legacy-restore-"),
+    );
+    const dummyDbPath = path.join(tempDir, "dummy.db");
 
     // Create a standalone dummy SQLite database with a users table
     const testDb = new Database(dummyDbPath, { create: true });
@@ -69,17 +73,19 @@ describe('Backup and Restore Service', () => {
     `);
     testDb.close();
 
-    const result = await restoreFromArchive(dummyDbPath, 'dummy.db');
+    const result = await restoreFromArchive(dummyDbPath, "dummy.db");
     expect(result.success).toBe(true);
-    expect(result.message).toContain('Legacy SQLite');
+    expect(result.message).toContain("Legacy SQLite");
 
     // Clean up test records and safety backup
-    const { getDb } = await import('../src/db');
-    const { users } = await import('../src/db/schema');
-    const { eq } = await import('drizzle-orm');
+    const { getDb } = await import("../src/db");
+    const { users } = await import("../src/db/schema");
+    const { eq } = await import("drizzle-orm");
     await getDb().delete(users).where(eq(users.id, 999));
     if (result.safetyBackupPath && fs.existsSync(result.safetyBackupPath)) {
-      try { fs.unlinkSync(result.safetyBackupPath); } catch {}
+      try {
+        fs.unlinkSync(result.safetyBackupPath);
+      } catch {}
     }
 
     try {

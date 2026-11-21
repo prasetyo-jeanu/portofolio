@@ -92,7 +92,7 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
 
       <div>
         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tech Stack Tags (comma separated)</label>
-        <input id="proj-tags" type="text" value={tagNames.join(', ')} placeholder="TypeScript, Node.js, PostgreSQL" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
+        <input id="proj-tags" type="text" value={tagNames.join(', ')} placeholder="TypeScript, Nodejs, PostgreSQL" class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm" />
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-center">
