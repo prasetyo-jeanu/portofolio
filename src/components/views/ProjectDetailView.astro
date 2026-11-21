@@ -81,6 +81,15 @@ const pageTitle = entry.data.seoTitle || `${entry.data.title} — ${t.projects.t
 const pageDescription = entry.data.seoDescription || entry.data.summary;
 const ogImage = entry.data.ogImageUrl || entry.data.coverImage || '/og-default.png';
 
+const hasMultipleImages = Array.isArray(entry.data.gallery) && entry.data.gallery.length > 1;
+const primaryCoverUrl = entry.data.coverImage || (entry.data.gallery?.[0]?.url ?? null);
+const initialGalleryItem = hasMultipleImages
+  ? entry.data.gallery.find((g) => g.url === primaryCoverUrl) || entry.data.gallery[0]
+  : null;
+const initialDisplayUrl = initialGalleryItem?.url || primaryCoverUrl;
+const initialDisplayAlt = initialGalleryItem?.alt || entry.data.coverAlt || entry.data.title;
+const initialDisplayCaption = initialGalleryItem?.caption || '';
+
 const jsonLd = [
   buildProjectJsonLd({
     title: entry.data.seoTitle || entry.data.title,
@@ -174,10 +183,63 @@ const jsonLd = [
     <div class="mx-auto max-w-[1376px] px-5 py-10 sm:px-10 lg:py-12">
       <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
         <div class="min-w-0">
-          {entry.data.coverImage && (
+          {hasMultipleImages && entry.data.gallery ? (
+            <div class="project-gallery mb-8">
+              <figure class="relative aspect-video overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[#222831]">
+                <img
+                  id="project-main-display"
+                  src={initialDisplayUrl || ''}
+                  alt={initialDisplayAlt || ''}
+                  width="1280"
+                  height="720"
+                  loading="eager"
+                  decoding="async"
+                  fetchpriority="high"
+                  class="h-full w-full object-cover transition-opacity duration-200"
+                />
+              </figure>
+              <figcaption
+                id="project-main-caption"
+                class:list={[
+                  'mt-2 px-1 text-xs font-mono text-[var(--text-muted)] italic',
+                  !initialDisplayCaption && 'hidden',
+                ]}
+              >
+                {initialDisplayCaption}
+              </figcaption>
+
+              <div
+                class="mt-3 flex gap-2.5 overflow-x-auto pb-2 pt-1 scrollbar-thin"
+                role="region"
+                aria-label="Project image gallery thumbnails"
+              >
+                {entry.data.gallery.map((img, idx) => {
+                  const isCurrent = img.url === initialDisplayUrl;
+                  return (
+                    <button
+                      type="button"
+                      data-gallery-thumb
+                      data-url={img.url}
+                      data-alt={img.alt || `${entry.data.title} - ${idx + 1}`}
+                      data-caption={img.caption || ''}
+                      aria-label={`View image ${idx + 1}`}
+                      class:list={[
+                        'group relative aspect-video w-24 sm:w-28 shrink-0 overflow-hidden rounded border cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)]',
+                        isCurrent
+                          ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/50 opacity-100'
+                          : 'border-[var(--border-subtle)] opacity-70 hover:opacity-100 hover:border-[var(--accent)]/60',
+                      ]}
+                    >
+                      <img src={img.url} alt="" loading="lazy" class="h-full w-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : primaryCoverUrl ? (
             <figure class="mb-8 aspect-video overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[#222831]">
               <img
-                src={entry.data.coverImage}
+                src={primaryCoverUrl}
                 alt={entry.data.coverAlt || entry.data.title}
                 width="1280"
                 height="720"
@@ -187,7 +249,7 @@ const jsonLd = [
                 class="h-full w-full object-cover"
               />
             </figure>
-          )}
+          ) : null}
 
           {entry.data.isConfidential && (
             <p class="mb-6 rounded border border-[var(--border-ledger)] bg-[var(--bg-secondary)]/45 px-4 py-3 font-mono text-xs leading-relaxed text-[var(--text-secondary)]">
@@ -345,3 +407,49 @@ const jsonLd = [
 
   <CopyCodeEnhancer locale={locale} />
 </PublicLayout>
+
+<script>
+  const mainImg = document.getElementById('project-main-display') as HTMLImageElement | null;
+  const captionEl = document.getElementById('project-main-caption');
+  const thumbs = document.querySelectorAll<HTMLButtonElement>('[data-gallery-thumb]');
+
+  if (mainImg && thumbs.length > 0) {
+    thumbs.forEach((thumb) => {
+      const selectThumb = () => {
+        const nextUrl = thumb.dataset.url;
+        const nextAlt = thumb.dataset.alt;
+        const nextCaption = thumb.dataset.caption || '';
+
+        if (!nextUrl || mainImg.src.endsWith(nextUrl)) return;
+
+        // Smooth fade transition
+        mainImg.style.opacity = '0.35';
+        setTimeout(() => {
+          mainImg.src = nextUrl;
+          if (nextAlt) mainImg.alt = nextAlt;
+          mainImg.style.opacity = '1';
+        }, 120);
+
+        if (captionEl) {
+          captionEl.textContent = nextCaption;
+          captionEl.classList.toggle('hidden', !nextCaption);
+        }
+
+        thumbs.forEach((t) => {
+          const isThis = t === thumb;
+          t.className = isThis
+            ? 'group relative aspect-video w-24 sm:w-28 shrink-0 overflow-hidden rounded border cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)] border-[var(--accent)] ring-2 ring-[var(--accent)]/50 opacity-100'
+            : 'group relative aspect-video w-24 sm:w-28 shrink-0 overflow-hidden rounded border cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)] border-[var(--border-subtle)] opacity-70 hover:opacity-100 hover:border-[var(--accent)]/60';
+        });
+      };
+
+      thumb.addEventListener('click', selectThumb);
+      thumb.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectThumb();
+        }
+      });
+    });
+  }
+</script>
