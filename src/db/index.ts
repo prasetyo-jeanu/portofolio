@@ -1,10 +1,11 @@
 import mysql from 'mysql2/promise';
-import { drizzle } from 'drizzle-orm/mysql2';
+import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
+import { Database } from 'bun:sqlite';
 import * as schema from './schema';
 import { env } from '../lib/env';
 
 let pool: mysql.Pool | null = null;
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let dbInstance: MySql2Database<typeof schema> | null = null;
 
 export function getPool(): mysql.Pool {
   if (!pool) {
@@ -35,14 +36,14 @@ export function getPool(): mysql.Pool {
   return pool;
 }
 
-export function getDb() {
+export function getDb(): MySql2Database<typeof schema> {
   if (!dbInstance) {
     dbInstance = drizzle(getPool(), { schema, mode: 'default' });
   }
   return dbInstance;
 }
 
-export async function closeDb() {
+export async function closeDb(): Promise<void> {
   if (pool) {
     await pool.end();
     pool = null;
@@ -50,7 +51,11 @@ export async function closeDb() {
   }
 }
 
-export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
+export function getSqlite(): Database {
+  return new Database(env.DATABASE_PATH, { create: true });
+}
+
+export const db: MySql2Database<typeof schema> = new Proxy({} as MySql2Database<typeof schema>, {
   get(_target, prop, receiver) {
     const instance = getDb();
     const value = Reflect.get(instance, prop, receiver);

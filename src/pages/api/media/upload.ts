@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { eq } from 'drizzle-orm';
 import { db } from '../../../db';
 import { media } from '../../../db/schema';
 import { saveUploadedImage } from '../../../lib/media';
@@ -27,7 +28,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
 
     const saved = await saveUploadedImage(file);
-    const [inserted] = await db
+    const [result] = await db
       .insert(media)
       .values({
         filename: saved.filename,
@@ -38,8 +39,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
         altId,
         altEn,
         createdAt: new Date(),
-      })
-      .returning();
+      });
+
+    const [inserted] = await db.select().from(media).where(eq(media.id, result.insertId)).limit(1);
 
     return new Response(JSON.stringify({ media: inserted }), {
       status: 201,

@@ -174,9 +174,9 @@ export async function saveFreelanceProjectRecord(
   let freelanceProjectId = input.id || null;
   const techStackJson = JSON.stringify(normalizedTech);
 
-  return db.transaction((tx) => {
+  return await db.transaction(async (tx) => {
     if (!freelanceProjectId) {
-      const [created] = tx
+      const [created] = await tx
         .insert(freelanceProjects)
         .values({
           category: input.category.trim() || 'freelance',
@@ -189,21 +189,18 @@ export async function saveFreelanceProjectRecord(
           sortOrder: input.sortOrder,
           createdAt: now,
           updatedAt: now,
-        })
-        .returning({ id: freelanceProjects.id })
-        .all();
-      freelanceProjectId = created.id;
+        });
+      freelanceProjectId = created.insertId;
     } else {
-      const existing = tx
+      const existing = await tx
         .select({ id: freelanceProjects.id })
         .from(freelanceProjects)
         .where(eq(freelanceProjects.id, freelanceProjectId))
-        .limit(1)
-        .all();
+        .limit(1);
       if (existing.length === 0) {
         throw new FreelanceServiceError('NOT_FOUND', 'Freelance project not found.');
       }
-      tx.update(freelanceProjects)
+      await tx.update(freelanceProjects)
         .set({
           category: input.category.trim() || 'freelance',
           featured: input.featured,
@@ -215,12 +212,11 @@ export async function saveFreelanceProjectRecord(
           sortOrder: input.sortOrder,
           updatedAt: now,
         })
-        .where(eq(freelanceProjects.id, freelanceProjectId))
-        .run();
+        .where(eq(freelanceProjects.id, freelanceProjectId));
     }
 
     for (const [loc, data] of prepared.entries()) {
-      const existing = tx
+      const existing = await tx
         .select()
         .from(freelanceProjectTranslations)
         .where(
@@ -229,12 +225,11 @@ export async function saveFreelanceProjectRecord(
             eq(freelanceProjectTranslations.locale, loc),
           ),
         )
-        .limit(1)
-        .all();
+        .limit(1);
 
       if (existing.length > 0) {
         const prev = existing[0];
-        tx.update(freelanceProjectTranslations)
+        await tx.update(freelanceProjectTranslations)
           .set({
             title: data.title,
             slug: data.slug,
@@ -246,10 +241,9 @@ export async function saveFreelanceProjectRecord(
             publishedAt: data.status === 'published' ? prev.publishedAt || now : prev.publishedAt,
             updatedAt: now,
           })
-          .where(eq(freelanceProjectTranslations.id, prev.id))
-          .run();
+          .where(eq(freelanceProjectTranslations.id, prev.id));
       } else {
-        tx.insert(freelanceProjectTranslations)
+        await tx.insert(freelanceProjectTranslations)
           .values({
             freelanceProjectId,
             locale: loc,
@@ -263,8 +257,7 @@ export async function saveFreelanceProjectRecord(
             publishedAt: data.status === 'published' ? now : null,
             createdAt: now,
             updatedAt: now,
-          })
-          .run();
+          });
       }
     }
 
@@ -274,15 +267,13 @@ export async function saveFreelanceProjectRecord(
 
 export async function archiveFreelanceProjectRecord(db: DbClient, id: number): Promise<void> {
   const now = new Date();
-  db.transaction((tx) => {
-    tx.update(freelanceProjects)
+  await db.transaction(async (tx) => {
+    await tx.update(freelanceProjects)
       .set({ deletedAt: now, updatedAt: now })
-      .where(eq(freelanceProjects.id, id))
-      .run();
-    tx.update(freelanceProjectTranslations)
+      .where(eq(freelanceProjects.id, id));
+    await tx.update(freelanceProjectTranslations)
       .set({ status: 'archived', updatedAt: now })
-      .where(eq(freelanceProjectTranslations.freelanceProjectId, id))
-      .run();
+      .where(eq(freelanceProjectTranslations.freelanceProjectId, id));
   });
 }
 
@@ -292,15 +283,19 @@ export async function toggleFreelanceFeaturedRecord(
   featured: boolean,
 ): Promise<{ featured: boolean }> {
   const now = new Date();
-  const updated = await db
-    .update(freelanceProjects)
-    .set({ featured, updatedAt: now })
+  const [existing] = await db
+    .select({ id: freelanceProjects.id })
+    .from(freelanceProjects)
     .where(eq(freelanceProjects.id, id))
-    .returning({ id: freelanceProjects.id, featured: freelanceProjects.featured });
-  if (updated.length === 0) {
+    .limit(1);
+  if (!existing) {
     throw new FreelanceServiceError('NOT_FOUND', 'Freelance project not found.');
   }
-  return { featured: updated[0].featured };
+  await db
+    .update(freelanceProjects)
+    .set({ featured, updatedAt: now })
+    .where(eq(freelanceProjects.id, id));
+  return { featured };
 }
 
 export async function reorderFreelanceProjectRecords(
@@ -309,12 +304,11 @@ export async function reorderFreelanceProjectRecords(
 ): Promise<void> {
   const now = new Date();
   const uniqueIds = Array.from(new Set(orderedIds));
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     for (let i = 0; i < uniqueIds.length; i++) {
-      tx.update(freelanceProjects)
+      await tx.update(freelanceProjects)
         .set({ sortOrder: i + 1, updatedAt: now })
-        .where(eq(freelanceProjects.id, uniqueIds[i]))
-        .run();
+        .where(eq(freelanceProjects.id, uniqueIds[i]));
     }
   });
 }

@@ -99,7 +99,7 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
     logLines.push(`[${new Date().toISOString()}] ${msg}`);
   };
 
-  const [job] = await db
+  const [result] = await db
     .insert(publishingJobs)
     .values({
       status: 'running',
@@ -107,11 +107,16 @@ export async function runPublishPipeline(userId: number | null, triggerSource = 
       triggeredByUserId: userId,
       startedAt,
       logs: '',
-    })
-    .returning();
+    });
+
+  const [job] = await db
+    .select()
+    .from(publishingJobs)
+    .where(eq(publishingJobs.id, result.insertId))
+    .limit(1);
 
   try {
-    log('Starting content materialization from SQLite...');
+    log('Starting content materialization from database...');
     const { postsCount, projectsCount } = await materializeContentFromDb();
     log(`Materialized ${postsCount} published post(s) and ${projectsCount} published project(s).`);
 

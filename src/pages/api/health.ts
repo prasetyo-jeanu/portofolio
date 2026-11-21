@@ -6,7 +6,7 @@ export const prerender = false;
 
 export const GET: APIRoute = async () => {
   try {
-    await db.run(sql`SELECT 1`);
+    await db.execute(sql`SELECT 1`);
     return new Response(
       JSON.stringify({
         status: 'ok',

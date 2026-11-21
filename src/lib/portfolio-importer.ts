@@ -127,7 +127,7 @@ async function upsertPortfolioMedia(
     return existing[0].id;
   }
 
-  const [created] = await db
+  const [result] = await db
     .insert(media)
     .values({
       filename,
@@ -140,10 +140,9 @@ async function upsertPortfolioMedia(
       altId: entry.data.image.alt.id,
       altEn: entry.data.image.alt.en,
       createdAt: now,
-    })
-    .returning({ id: media.id });
+    });
 
-  return created.id;
+  return result.insertId;
 }
 
 async function upsertProjectTranslationRow(
@@ -216,13 +215,14 @@ async function syncProjectTags(
 
     let [tagRow] = await db.select().from(tags).where(eq(tags.slug, tagSlug)).limit(1);
     if (!tagRow) {
-      [tagRow] = await db
+      const [insertResult] = await db
         .insert(tags)
-        .values({ name, slug: tagSlug, kind: 'tech', createdAt: now })
-        .returning();
+        .values({ name, slug: tagSlug, kind: 'tech', createdAt: now });
+      const [newTag] = await db.select().from(tags).where(eq(tags.id, insertResult.insertId)).limit(1);
+      tagRow = newTag;
     }
 
-    await db.insert(projectTags).values({ projectId, tagId: tagRow.id }).onConflictDoNothing();
+    await db.insert(projectTags).ignore().values({ projectId, tagId: tagRow.id });
     linked += 1;
   }
   return linked;
@@ -294,9 +294,8 @@ export async function importPortfolioToDb(options?: {
           sortOrder: data.sort_order,
           createdAt: now,
           updatedAt: now,
-        })
-        .returning({ id: projects.id });
-      projectId = created.id;
+        });
+      projectId = created.insertId;
       summary.projectsCreated += 1;
     }
 

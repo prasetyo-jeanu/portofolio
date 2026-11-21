@@ -73,11 +73,10 @@ async function syncTags(
     if (existing.length > 0) {
       tagIds.push(existing[0].id);
     } else {
-      const [inserted] = await db
+      const [result] = await db
         .insert(tags)
-        .values({ name, slug: tagSlug, kind, createdAt: now })
-        .returning();
-      tagIds.push(inserted.id);
+        .values({ name, slug: tagSlug, kind, createdAt: now });
+      tagIds.push(result.insertId);
     }
   }
   return tagIds;
@@ -257,7 +256,7 @@ export const server = {
       let postId = input.id || null;
 
       if (!postId) {
-        const [created] = await db
+        const [result] = await db
           .insert(posts)
           .values({
             category: input.category,
@@ -265,9 +264,8 @@ export const server = {
             coverMediaId: input.coverMediaId ?? null,
             createdAt: now,
             updatedAt: now,
-          })
-          .returning();
-        postId = created.id;
+          });
+        postId = result.insertId;
       } else {
         await db
           .update(posts)
@@ -303,8 +301,7 @@ export const server = {
                 statusCode: 301,
                 createdAt: now,
               })
-              .onConflictDoUpdate({
-                target: urlRedirects.fromPath,
+              .onDuplicateKeyUpdate({
                 set: { toPath },
               });
           }
@@ -483,7 +480,7 @@ export const server = {
       const galleryJson = JSON.stringify(input.gallery);
 
       if (!projectId) {
-        const [created] = await db
+        const [result] = await db
           .insert(projects)
           .values({
             category: input.category,
@@ -496,9 +493,8 @@ export const server = {
             sortOrder: input.sortOrder,
             createdAt: now,
             updatedAt: now,
-          })
-          .returning();
-        projectId = created.id;
+          });
+        projectId = result.insertId;
       } else {
         await db
           .update(projects)
@@ -538,8 +534,7 @@ export const server = {
                 statusCode: 301,
                 createdAt: now,
               })
-              .onConflictDoUpdate({
-                target: urlRedirects.fromPath,
+              .onDuplicateKeyUpdate({
                 set: { toPath },
               });
           }
@@ -620,15 +615,15 @@ export const server = {
     handler: async (input, context) => {
       requireAdmin(context);
       const now = new Date();
-      const updated = await db
-        .update(projects)
-        .set({ featured: input.featured, updatedAt: now })
-        .where(eq(projects.id, input.id))
-        .returning({ id: projects.id, featured: projects.featured });
-      if (updated.length === 0) {
+      const [existing] = await db.select({ id: projects.id }).from(projects).where(eq(projects.id, input.id)).limit(1);
+      if (!existing) {
         throw new ActionError({ code: 'NOT_FOUND', message: 'Project not found.' });
       }
-      return { success: true, featured: updated[0].featured };
+      await db
+        .update(projects)
+        .set({ featured: input.featured, updatedAt: now })
+        .where(eq(projects.id, input.id));
+      return { success: true, featured: input.featured };
     },
   }),
 
@@ -851,8 +846,7 @@ export const server = {
           statusCode: 301,
           createdAt: new Date(),
         })
-        .onConflictDoUpdate({
-          target: urlRedirects.fromPath,
+        .onDuplicateKeyUpdate({
           set: { toPath },
         });
       return { success: true };

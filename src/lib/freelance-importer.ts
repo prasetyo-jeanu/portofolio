@@ -307,7 +307,7 @@ export async function importFreelanceToDb(options?: {
       summary.projectsUpdated += 1;
       summary.translationsSynced += 1;
     } else {
-      const [created] = await db
+      const [result] = await db
         .insert(freelanceProjects)
         .values({
           category: entry.category,
@@ -317,11 +317,10 @@ export async function importFreelanceToDb(options?: {
           sortOrder: entry.sortOrder,
           createdAt: now,
           updatedAt: now,
-        })
-        .returning({ id: freelanceProjects.id });
+        });
 
       await db.insert(freelanceProjectTranslations).values({
-        freelanceProjectId: created.id,
+        freelanceProjectId: result.insertId,
         locale: 'id',
         title: entry.title,
         slug: entry.slug,
