@@ -1,50 +1,51 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
+import mysql from 'mysql2/promise';
+import { drizzle } from 'drizzle-orm/mysql2';
 import * as schema from './schema';
 import { env } from '../lib/env';
 
-let sqliteInstance: Database | null = null;
+let pool: mysql.Pool | null = null;
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
-function ensureDirectory(filePath: string) {
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+export function getPool(): mysql.Pool {
+  if (!pool) {
+    if (env.DATABASE_URL) {
+      pool = mysql.createPool({
+        uri: env.DATABASE_URL,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
+      });
+    } else {
+      pool = mysql.createPool({
+        host: env.MYSQL_HOST,
+        port: env.MYSQL_PORT,
+        user: env.MYSQL_USER,
+        password: env.MYSQL_PASSWORD,
+        database: env.MYSQL_DATABASE,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
+      });
+    }
   }
-}
-
-export function getSqlite(): Database {
-  if (!sqliteInstance) {
-    ensureDirectory(env.DATABASE_PATH);
-    sqliteInstance = new Database(env.DATABASE_PATH, { create: true });
-    sqliteInstance.exec('PRAGMA busy_timeout = 10000;');
-    sqliteInstance.exec('PRAGMA journal_mode = WAL;');
-    sqliteInstance.exec('PRAGMA synchronous = NORMAL;');
-    sqliteInstance.exec('PRAGMA foreign_keys = ON;');
-  }
-  return sqliteInstance;
+  return pool;
 }
 
 export function getDb() {
   if (!dbInstance) {
-    dbInstance = drizzle(getSqlite(), { schema });
+    dbInstance = drizzle(getPool(), { schema, mode: 'default' });
   }
   return dbInstance;
 }
 
-export function closeDb() {
-  if (sqliteInstance) {
-    try {
-      sqliteInstance.exec('PRAGMA wal_checkpoint(PASSIVE);');
-    } catch {}
-    try {
-      sqliteInstance.close(true);
-    } catch {
-      sqliteInstance.close();
-    }
-    sqliteInstance = null;
+export async function closeDb() {
+  if (pool) {
+    await pool.end();
+    pool = null;
     dbInstance = null;
   }
 }

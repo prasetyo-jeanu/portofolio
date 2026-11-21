@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
+import { migrate } from 'drizzle-orm/mysql2/migrator';
 import { getDb, closeDb } from '../src/db';
 import { env } from '../src/lib/env';
 
@@ -15,9 +15,9 @@ async function main() {
   }
 
   const db = getDb();
-  migrate(db, { migrationsFolder });
-  console.log(`Database migrated successfully at ${env.DATABASE_PATH}`);
-  closeDb();
+  await migrate(db, { migrationsFolder });
+  console.log(`Database migrated successfully to MySQL target.`);
+  await closeDb();
 }
 
 main().catch((err) => {
