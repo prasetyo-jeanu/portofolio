@@ -19,6 +19,24 @@ export const env = {
   get DATABASE_PATH() {
     return path.resolve(process.cwd(), process.env.DATABASE_PATH || './data/portfolio.db');
   },
+  get DATABASE_URL() {
+    return process.env.DATABASE_URL;
+  },
+  get MYSQL_HOST() {
+    return process.env.MYSQL_HOST || '127.0.0.1';
+  },
+  get MYSQL_PORT() {
+    return Number(process.env.MYSQL_PORT || 3306);
+  },
+  get MYSQL_USER() {
+    return process.env.MYSQL_USER || 'root';
+  },
+  get MYSQL_PASSWORD() {
+    return process.env.MYSQL_PASSWORD || '';
+  },
+  get MYSQL_DATABASE() {
+    return process.env.MYSQL_DATABASE || 'portfolio';
+  },
   get UPLOAD_DIR() {
     return path.resolve(process.cwd(), process.env.UPLOAD_DIR || './data/uploads');
   },
