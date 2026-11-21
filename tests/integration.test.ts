@@ -675,4 +675,72 @@ describe("Database, Auth, and Content Integrity Integration Tests", () => {
       expect(enItems[i].id).toBe(idItems[i].id);
     }
   });
+
+  test("projects supports multi-image gallery with selectable coverMediaId", async () => {
+    const db = getDb();
+    const now = new Date();
+
+    const [media1] = await db
+      .insert(media)
+      .values({
+        filename: "screenshot-1.png",
+        storagePath: "screenshots/screenshot-1.png",
+        publicUrl: "/uploads/screenshots/screenshot-1.png",
+        mimeType: "image/png",
+        sizeBytes: 1024,
+        createdAt: now,
+      })
+      .returning();
+
+    const [media2] = await db
+      .insert(media)
+      .values({
+        filename: "screenshot-2.png",
+        storagePath: "screenshots/screenshot-2.png",
+        publicUrl: "/uploads/screenshots/screenshot-2.png",
+        mimeType: "image/png",
+        sizeBytes: 2048,
+        createdAt: now,
+      })
+      .returning();
+
+    const galleryData = [
+      { url: media1.publicUrl, alt: "Dashboard View", caption: "Main dashboard overview" },
+      { url: media2.publicUrl, alt: "Mobile View", caption: "Responsive mobile interface" },
+    ];
+
+    const [proj] = await db
+      .insert(projects)
+      .values({
+        category: "fullstack",
+        featured: true,
+        coverMediaId: media1.id,
+        galleryJson: JSON.stringify(galleryData),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    expect(proj.coverMediaId).toBe(media1.id);
+    const parsedGallery1 = JSON.parse(proj.galleryJson);
+    expect(parsedGallery1).toHaveLength(2);
+    expect(parsedGallery1[0].url).toBe(media1.publicUrl);
+    expect(parsedGallery1[1].url).toBe(media2.publicUrl);
+
+    // Switch cover to media2
+    await db
+      .update(projects)
+      .set({
+        coverMediaId: media2.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(projects.id, proj.id));
+
+    const [updatedProj] = await db.select().from(projects).where(eq(projects.id, proj.id));
+    expect(updatedProj.coverMediaId).toBe(media2.id);
+    const parsedGallery2 = JSON.parse(updatedProj.galleryJson);
+    expect(parsedGallery2).toHaveLength(2);
+    expect(parsedGallery2[0].url).toBe(media1.publicUrl);
+    expect(parsedGallery2[1].url).toBe(media2.publicUrl);
+  });
 });

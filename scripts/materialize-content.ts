@@ -184,7 +184,7 @@ export async function materializeContentFromDb(): Promise<{
         demoUrl: proj.demoUrl || null,
         repoUrl: proj.isConfidential ? null : proj.repoUrl || null,
         tags: projTagList,
-        coverImage: cover?.publicUrl || null,
+        coverImage: cover?.publicUrl || (gallery.length > 0 ? gallery[0].url : null),
         coverAlt: (locale === 'id' ? cover?.altId : cover?.altEn) || tr.title,
         gallery,
         sortOrder: proj.sortOrder,
