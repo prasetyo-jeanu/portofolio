@@ -1,6 +1,8 @@
 FROM oven/bun:1.3-alpine AS base
 WORKDIR /app
 
+RUN apk add --no-cache tar gzip
+
 # Install dependencies
 COPY package.json ./
 RUN bun install --no-save
