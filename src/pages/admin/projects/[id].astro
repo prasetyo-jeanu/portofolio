@@ -332,7 +332,7 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
     } else {
       window.__cmEditors?.['cm-proj-id']?.markClean();
       window.__cmEditors?.['cm-proj-en']?.markClean();
-      showAlert('Project saved to SQLite! Remember to run Publish Static Site to update public pages.', false);
+      showAlert('Project saved to database! Remember to run Publish Static Site to update public pages.', false);
       if (!projectId && data?.projectId) {
         window.location.href = `/admin/projects/${data.projectId}`;
       }

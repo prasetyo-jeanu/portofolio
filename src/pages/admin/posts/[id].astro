@@ -86,7 +86,7 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
             id="post-tags"
             type="text"
             value={tagNames.join(', ')}
-            placeholder="astro, sqlite, typescript"
+            placeholder="astro, mysql, typescript"
             class="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm"
           />
         </div>
@@ -324,7 +324,7 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
     } else {
       window.__cmEditors?.['cm-post-id']?.markClean();
       window.__cmEditors?.['cm-post-en']?.markClean();
-      showAlert('Article saved to SQLite! Remember to run Publish Static Site to update public pages.', false);
+      showAlert('Article saved to database! Remember to run Publish Static Site to update public pages.', false);
       if (!postId && data?.postId) {
         window.location.href = `/admin/posts/${data.postId}`;
       }
