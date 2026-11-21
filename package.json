@@ -11,6 +11,7 @@
     "start": "bun run server/entrypoint.ts",
     "db:generate": "bun --bun drizzle-kit generate",
     "db:migrate": "bun run scripts/migrate.ts",
+    "db:migrate-sqlite": "bun run scripts/migrate-sqlite-to-mysql.ts",
     "db:seed": "bun run scripts/seed.ts",
     "portfolio:import": "bun run scripts/import-portfolio.ts",
     "freelance:import": "bun run scripts/import-freelance.ts",
