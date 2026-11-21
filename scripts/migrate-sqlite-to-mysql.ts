@@ -21,7 +21,13 @@ export async function migrateSqliteToMysql(sqlitePath: string = env.DATABASE_PAT
   const toDate = (val: any): Date => {
     if (!val) return new Date();
     if (val instanceof Date) return val;
-    return new Date(typeof val === 'number' ? val : Number(val));
+    if (typeof val === 'number') return new Date(val);
+    const num = Number(val);
+    if (!isNaN(num) && String(val).trim() !== '' && !String(val).includes('-') && !String(val).includes('T')) {
+      return new Date(num);
+    }
+    const parsed = new Date(val);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
   };
 
   const toOptionalDate = (val: any): Date | null => {

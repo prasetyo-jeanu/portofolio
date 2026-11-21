@@ -35,7 +35,5 @@ CMD ["sh", "-c", "\
     echo 'Existing /data/dist-public found — syncing latest _astro client assets' && \
     cp -r /app/dist-bootstrap/_astro/. /data/dist-public/_astro/; \
   fi && \
-  bun run scripts/migrate.ts && \
-  bun run scripts/seed.ts && \
-  bun run server/entrypoint.ts \
+  bun run scripts/bootstrap.ts \
 "]

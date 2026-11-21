@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { env } from './env';
@@ -102,6 +103,23 @@ export async function restoreFromArchive(
     };
   }
 
+  // 1. Take safety snapshot before modifying database
+  let safetyBackupPath: string | undefined;
+  try {
+    const tempSafety = await createBackupArchive();
+    const dataDir = path.dirname(env.DATABASE_PATH);
+    const backupDir = path.join(dataDir, 'backups');
+    fs.mkdirSync(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    safetyBackupPath = path.join(backupDir, `pre-restore-${stamp}.tar.gz`);
+    fs.copyFileSync(tempSafety, safetyBackupPath);
+    try {
+      fs.unlinkSync(tempSafety);
+    } catch {}
+  } catch (e) {
+    console.warn('[restore] Warning: Failed to create pre-restore safety backup:', e);
+  }
+
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-restore-staging-'));
 
   try {
@@ -111,7 +129,7 @@ export async function restoreFromArchive(
     if (isDb) {
       candidateDbPath = archiveFilePath;
     } else {
-      // 1. Extract tar to staging
+      // Extract tar to staging
       const proc = Bun.spawn(['tar', '-xzf', archiveFilePath, '-C', stagingDir]);
       const exitCode = await proc.exited;
       if (exitCode !== 0) {
@@ -153,133 +171,166 @@ export async function restoreFromArchive(
       const toDate = (val: any) => (val ? new Date(val) : new Date());
       const toOptionalDate = (val: any) => (val ? new Date(val) : null);
 
-      if (Array.isArray(tables.users)) {
-        for (const r of tables.users) {
-          await db.insert(schema.users).ignore().values({
-            ...r,
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
-        }
-      }
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SET FOREIGN_KEY_CHECKS = 0;`);
 
-      if (Array.isArray(tables.media)) {
-        for (const r of tables.media) {
-          await db.insert(schema.media).ignore().values({
-            ...r,
-            createdAt: toDate(r.createdAt),
-          });
-        }
-      }
+        // Clear existing tables
+        await tx.delete(schema.projectTags);
+        await tx.delete(schema.postTags);
+        await tx.delete(schema.publishingJobs);
+        await tx.delete(schema.urlRedirects);
+        await tx.delete(schema.freelanceProjectTranslations);
+        await tx.delete(schema.freelanceProjects);
+        await tx.delete(schema.projectTranslations);
+        await tx.delete(schema.projects);
+        await tx.delete(schema.postTranslations);
+        await tx.delete(schema.posts);
+        await tx.delete(schema.tags);
+        await tx.delete(schema.media);
+        await tx.delete(schema.siteSettings);
+        await tx.delete(schema.users);
 
-      if (Array.isArray(tables.posts)) {
-        for (const r of tables.posts) {
-          await db.insert(schema.posts).ignore().values({
-            ...r,
-            deletedAt: toOptionalDate(r.deletedAt),
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.users) && tables.users.length > 0) {
+          for (const r of tables.users) {
+            await tx.insert(schema.users).values({
+              ...r,
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.postTranslations)) {
-        for (const r of tables.postTranslations) {
-          await db.insert(schema.postTranslations).ignore().values({
-            ...r,
-            publishedAt: toOptionalDate(r.publishedAt),
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.media) && tables.media.length > 0) {
+          for (const r of tables.media) {
+            await tx.insert(schema.media).values({
+              ...r,
+              createdAt: toDate(r.createdAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.projects)) {
-        for (const r of tables.projects) {
-          await db.insert(schema.projects).ignore().values({
-            ...r,
-            deletedAt: toOptionalDate(r.deletedAt),
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.posts) && tables.posts.length > 0) {
+          for (const r of tables.posts) {
+            await tx.insert(schema.posts).values({
+              ...r,
+              deletedAt: toOptionalDate(r.deletedAt),
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.projectTranslations)) {
-        for (const r of tables.projectTranslations) {
-          await db.insert(schema.projectTranslations).ignore().values({
-            ...r,
-            publishedAt: toOptionalDate(r.publishedAt),
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.postTranslations) && tables.postTranslations.length > 0) {
+          for (const r of tables.postTranslations) {
+            await tx.insert(schema.postTranslations).values({
+              ...r,
+              publishedAt: toOptionalDate(r.publishedAt),
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.freelanceProjects)) {
-        for (const r of tables.freelanceProjects) {
-          await db.insert(schema.freelanceProjects).ignore().values({
-            ...r,
-            deletedAt: toOptionalDate(r.deletedAt),
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.projects) && tables.projects.length > 0) {
+          for (const r of tables.projects) {
+            await tx.insert(schema.projects).values({
+              ...r,
+              deletedAt: toOptionalDate(r.deletedAt),
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.freelanceProjectTranslations)) {
-        for (const r of tables.freelanceProjectTranslations) {
-          await db.insert(schema.freelanceProjectTranslations).ignore().values({
-            ...r,
-            publishedAt: toOptionalDate(r.publishedAt),
-            createdAt: toDate(r.createdAt),
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.projectTranslations) && tables.projectTranslations.length > 0) {
+          for (const r of tables.projectTranslations) {
+            await tx.insert(schema.projectTranslations).values({
+              ...r,
+              publishedAt: toOptionalDate(r.publishedAt),
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.tags)) {
-        for (const r of tables.tags) {
-          await db.insert(schema.tags).ignore().values({
-            ...r,
-            createdAt: toDate(r.createdAt),
-          });
+        if (Array.isArray(tables.freelanceProjects) && tables.freelanceProjects.length > 0) {
+          for (const r of tables.freelanceProjects) {
+            await tx.insert(schema.freelanceProjects).values({
+              ...r,
+              deletedAt: toOptionalDate(r.deletedAt),
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.postTags)) {
-        for (const r of tables.postTags) {
-          await db.insert(schema.postTags).ignore().values(r);
+        if (Array.isArray(tables.freelanceProjectTranslations) && tables.freelanceProjectTranslations.length > 0) {
+          for (const r of tables.freelanceProjectTranslations) {
+            await tx.insert(schema.freelanceProjectTranslations).values({
+              ...r,
+              publishedAt: toOptionalDate(r.publishedAt),
+              createdAt: toDate(r.createdAt),
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.projectTags)) {
-        for (const r of tables.projectTags) {
-          await db.insert(schema.projectTags).ignore().values(r);
+        if (Array.isArray(tables.tags) && tables.tags.length > 0) {
+          for (const r of tables.tags) {
+            await tx.insert(schema.tags).values({
+              ...r,
+              createdAt: toDate(r.createdAt),
+            });
+          }
         }
-      }
 
-      if (Array.isArray(tables.siteSettings)) {
-        for (const r of tables.siteSettings) {
-          await db.insert(schema.siteSettings).ignore().values({
-            ...r,
-            updatedAt: toDate(r.updatedAt),
-          });
+        if (Array.isArray(tables.postTags) && tables.postTags.length > 0) {
+          for (const r of tables.postTags) {
+            await tx.insert(schema.postTags).values(r);
+          }
         }
-      }
 
-      if (Array.isArray(tables.urlRedirects)) {
-        for (const r of tables.urlRedirects) {
-          await db.insert(schema.urlRedirects).ignore().values({
-            ...r,
-            createdAt: toDate(r.createdAt),
-          });
+        if (Array.isArray(tables.projectTags) && tables.projectTags.length > 0) {
+          for (const r of tables.projectTags) {
+            await tx.insert(schema.projectTags).values(r);
+          }
         }
-      }
+
+        if (Array.isArray(tables.siteSettings) && tables.siteSettings.length > 0) {
+          for (const r of tables.siteSettings) {
+            await tx.insert(schema.siteSettings).values({
+              ...r,
+              updatedAt: toDate(r.updatedAt),
+            });
+          }
+        }
+
+        if (Array.isArray(tables.urlRedirects) && tables.urlRedirects.length > 0) {
+          for (const r of tables.urlRedirects) {
+            await tx.insert(schema.urlRedirects).values({
+              ...r,
+              createdAt: toDate(r.createdAt),
+            });
+          }
+        }
+
+        if (Array.isArray(tables.publishingJobs) && tables.publishingJobs.length > 0) {
+          for (const r of tables.publishingJobs) {
+            await tx.insert(schema.publishingJobs).values({
+              ...r,
+              startedAt: toDate(r.startedAt),
+              finishedAt: toOptionalDate(r.finishedAt),
+            });
+          }
+        }
+
+        await tx.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`);
+      });
 
       return {
         success: true,
         message: 'Data successfully restored from JSON archive. Please publish the static site to apply updates.',
+        safetyBackupPath,
       };
     } else if (candidateDbPath && fs.existsSync(candidateDbPath)) {
       // Legacy SQLite archive restoration
@@ -290,6 +341,7 @@ export async function restoreFromArchive(
         message: result.migrated
           ? 'Legacy SQLite data successfully migrated into MySQL! Please publish the static site to apply updates.'
           : 'Legacy SQLite restore failed.',
+        safetyBackupPath,
       };
     } else {
       throw new Error('No valid database payload (data-export.json or portfolio.db) found in archive.');
@@ -300,6 +352,7 @@ export async function restoreFromArchive(
     return {
       success: false,
       message: `Restore failed: ${errorMsg}.`,
+      safetyBackupPath,
     };
   } finally {
     try {

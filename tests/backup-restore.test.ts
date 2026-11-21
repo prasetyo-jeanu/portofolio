@@ -73,6 +73,15 @@ describe('Backup and Restore Service', () => {
     expect(result.success).toBe(true);
     expect(result.message).toContain('Legacy SQLite');
 
+    // Clean up test records and safety backup
+    const { getDb } = await import('../src/db');
+    const { users } = await import('../src/db/schema');
+    const { eq } = await import('drizzle-orm');
+    await getDb().delete(users).where(eq(users.id, 999));
+    if (result.safetyBackupPath && fs.existsSync(result.safetyBackupPath)) {
+      try { fs.unlinkSync(result.safetyBackupPath); } catch {}
+    }
+
     try {
       fs.unlinkSync(dummyDbPath);
       fs.rmdirSync(tempDir);
