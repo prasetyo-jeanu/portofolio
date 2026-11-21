@@ -1,90 +1,95 @@
 import {
-  sqliteTable,
-  integer,
+  mysqlTable,
+  int,
+  varchar,
   text,
+  mediumtext,
+  boolean,
+  datetime,
   primaryKey,
   uniqueIndex,
   index,
-} from 'drizzle-orm/sqlite-core';
+  mysqlEnum,
+} from 'drizzle-orm/mysql-core';
 
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  email: text('email').notNull().unique(),
-  name: text('name').notNull(),
+export const users = mysqlTable('users', {
+  id: int('id').autoincrement().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
   passwordHash: text('password_hash').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+  updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
 });
 
-export const sessions = sqliteTable(
+export const sessions = mysqlTable(
   'sessions',
   {
-    id: text('id').primaryKey(),
-    userId: integer('user_id')
+    id: varchar('id', { length: 255 }).primaryKey(),
+    userId: int('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
-    ipAddress: text('ip_address'),
+    expiresAt: datetime('expires_at', { mode: 'date', fsp: 3 }).notNull(),
+    ipAddress: varchar('ip_address', { length: 64 }),
     userAgent: text('user_agent'),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [index('sessions_user_id_idx').on(table.userId), index('sessions_expires_at_idx').on(table.expiresAt)],
 );
 
-export const media = sqliteTable(
+export const media = mysqlTable(
   'media',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    filename: text('filename').notNull(),
-    storagePath: text('storage_path').notNull().unique(),
-    publicUrl: text('public_url').notNull(),
-    mimeType: text('mime_type').notNull(),
-    sizeBytes: integer('size_bytes').notNull(),
-    width: integer('width'),
-    height: integer('height'),
-    altId: text('alt_id').notNull().default(''),
-    altEn: text('alt_en').notNull().default(''),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    id: int('id').autoincrement().primaryKey(),
+    filename: varchar('filename', { length: 255 }).notNull(),
+    storagePath: varchar('storage_path', { length: 255 }).notNull().unique(),
+    publicUrl: varchar('public_url', { length: 512 }).notNull(),
+    mimeType: varchar('mime_type', { length: 128 }).notNull(),
+    sizeBytes: int('size_bytes').notNull(),
+    width: int('width'),
+    height: int('height'),
+    altId: varchar('alt_id', { length: 512 }).notNull().default(''),
+    altEn: varchar('alt_en', { length: 512 }).notNull().default(''),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [index('media_created_at_idx').on(table.createdAt)],
 );
 
-export const posts = sqliteTable(
+export const posts = mysqlTable(
   'posts',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    category: text('category').notNull().default('engineering'),
-    featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
-    coverMediaId: integer('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
-    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    id: int('id').autoincrement().primaryKey(),
+    category: varchar('category', { length: 64 }).notNull().default('engineering'),
+    featured: boolean('featured').notNull().default(false),
+    coverMediaId: int('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
+    deletedAt: datetime('deleted_at', { mode: 'date', fsp: 3 }),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [index('posts_deleted_at_idx').on(table.deletedAt)],
 );
 
-export const postTranslations = sqliteTable(
+export const postTranslations = mysqlTable(
   'post_translations',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    postId: integer('post_id')
+    id: int('id').autoincrement().primaryKey(),
+    postId: int('post_id')
       .notNull()
       .references(() => posts.id, { onDelete: 'cascade' }),
-    locale: text('locale', { enum: ['id', 'en'] }).notNull(),
-    title: text('title').notNull(),
-    slug: text('slug').notNull(),
-    summary: text('summary').notNull().default(''),
-    contentMdx: text('content_mdx').notNull().default(''),
-    seoTitle: text('seo_title'),
+    locale: mysqlEnum('locale', ['id', 'en']).notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 255 }).notNull(),
+    summary: text('summary').notNull(),
+    contentMdx: mediumtext('content_mdx').notNull(),
+    seoTitle: varchar('seo_title', { length: 255 }),
     seoDescription: text('seo_description'),
-    ogImageUrl: text('og_image_url'),
-    status: text('status', { enum: ['draft', 'published', 'archived'] })
+    ogImageUrl: varchar('og_image_url', { length: 512 }),
+    status: mysqlEnum('status', ['draft', 'published', 'archived'])
       .notNull()
       .default('draft'),
-    readingTimeMinutes: integer('reading_time_minutes').notNull().default(1),
-    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    readingTimeMinutes: int('reading_time_minutes').notNull().default(1),
+    publishedAt: datetime('published_at', { mode: 'date', fsp: 3 }),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [
     uniqueIndex('post_translations_post_locale_uq').on(table.postId, table.locale),
@@ -93,21 +98,21 @@ export const postTranslations = sqliteTable(
   ],
 );
 
-export const projects = sqliteTable(
+export const projects = mysqlTable(
   'projects',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    category: text('category').notNull().default('fullstack'),
-    featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
-    isConfidential: integer('is_confidential', { mode: 'boolean' }).notNull().default(false),
-    demoUrl: text('demo_url'),
-    repoUrl: text('repo_url'),
-    coverMediaId: integer('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
-    galleryJson: text('gallery_json').notNull().default('[]'),
-    sortOrder: integer('sort_order').notNull().default(0),
-    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    id: int('id').autoincrement().primaryKey(),
+    category: varchar('category', { length: 64 }).notNull().default('fullstack'),
+    featured: boolean('featured').notNull().default(false),
+    isConfidential: boolean('is_confidential').notNull().default(false),
+    demoUrl: varchar('demo_url', { length: 512 }),
+    repoUrl: varchar('repo_url', { length: 512 }),
+    coverMediaId: int('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
+    galleryJson: text('gallery_json').notNull(),
+    sortOrder: int('sort_order').notNull().default(0),
+    deletedAt: datetime('deleted_at', { mode: 'date', fsp: 3 }),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [
     index('projects_featured_sort_idx').on(table.featured, table.sortOrder),
@@ -115,28 +120,28 @@ export const projects = sqliteTable(
   ],
 );
 
-export const projectTranslations = sqliteTable(
+export const projectTranslations = mysqlTable(
   'project_translations',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    projectId: integer('project_id')
+    id: int('id').autoincrement().primaryKey(),
+    projectId: int('project_id')
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
-    locale: text('locale', { enum: ['id', 'en'] }).notNull(),
-    title: text('title').notNull(),
-    slug: text('slug').notNull(),
-    role: text('role').notNull().default(''),
-    summary: text('summary').notNull().default(''),
-    contentMdx: text('content_mdx').notNull().default(''),
-    seoTitle: text('seo_title'),
+    locale: mysqlEnum('locale', ['id', 'en']).notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 255 }).notNull(),
+    role: varchar('role', { length: 255 }).notNull().default(''),
+    summary: text('summary').notNull(),
+    contentMdx: mediumtext('content_mdx').notNull(),
+    seoTitle: varchar('seo_title', { length: 255 }),
     seoDescription: text('seo_description'),
-    ogImageUrl: text('og_image_url'),
-    status: text('status', { enum: ['draft', 'published', 'archived'] })
+    ogImageUrl: varchar('og_image_url', { length: 512 }),
+    status: mysqlEnum('status', ['draft', 'published', 'archived'])
       .notNull()
       .default('draft'),
-    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    publishedAt: datetime('published_at', { mode: 'date', fsp: 3 }),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [
     uniqueIndex('project_translations_project_locale_uq').on(table.projectId, table.locale),
@@ -145,21 +150,21 @@ export const projectTranslations = sqliteTable(
   ],
 );
 
-export const freelanceProjects = sqliteTable(
+export const freelanceProjects = mysqlTable(
   'freelance_projects',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    category: text('category').notNull().default('freelance'),
-    featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
-    isConfidential: integer('is_confidential', { mode: 'boolean' }).notNull().default(false),
-    demoUrl: text('demo_url'),
-    repoUrl: text('repo_url'),
-    coverMediaId: integer('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
-    techStackJson: text('tech_stack_json').notNull().default('[]'),
-    sortOrder: integer('sort_order').notNull().default(0),
-    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    id: int('id').autoincrement().primaryKey(),
+    category: varchar('category', { length: 64 }).notNull().default('freelance'),
+    featured: boolean('featured').notNull().default(false),
+    isConfidential: boolean('is_confidential').notNull().default(false),
+    demoUrl: varchar('demo_url', { length: 512 }),
+    repoUrl: varchar('repo_url', { length: 512 }),
+    coverMediaId: int('cover_media_id').references(() => media.id, { onDelete: 'set null' }),
+    techStackJson: text('tech_stack_json').notNull(),
+    sortOrder: int('sort_order').notNull().default(0),
+    deletedAt: datetime('deleted_at', { mode: 'date', fsp: 3 }),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [
     index('freelance_projects_featured_sort_idx').on(table.featured, table.sortOrder),
@@ -167,26 +172,26 @@ export const freelanceProjects = sqliteTable(
   ],
 );
 
-export const freelanceProjectTranslations = sqliteTable(
+export const freelanceProjectTranslations = mysqlTable(
   'freelance_project_translations',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    freelanceProjectId: integer('freelance_project_id')
+    id: int('id').autoincrement().primaryKey(),
+    freelanceProjectId: int('freelance_project_id')
       .notNull()
       .references(() => freelanceProjects.id, { onDelete: 'cascade' }),
-    locale: text('locale', { enum: ['id', 'en'] }).notNull(),
-    title: text('title').notNull(),
-    slug: text('slug').notNull(),
-    summary: text('summary').notNull().default(''),
-    contribution: text('contribution').notNull().default(''),
-    approach: text('approach').notNull().default(''),
-    impact: text('impact').notNull().default(''),
-    status: text('status', { enum: ['draft', 'published', 'archived'] })
+    locale: mysqlEnum('locale', ['id', 'en']).notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 255 }).notNull(),
+    summary: text('summary').notNull(),
+    contribution: text('contribution').notNull(),
+    approach: text('approach').notNull(),
+    impact: text('impact').notNull(),
+    status: mysqlEnum('status', ['draft', 'published', 'archived'])
       .notNull()
       .default('published'),
-    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    publishedAt: datetime('published_at', { mode: 'date', fsp: 3 }),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [
     uniqueIndex('freelance_translations_project_locale_uq').on(table.freelanceProjectId, table.locale),
@@ -195,76 +200,76 @@ export const freelanceProjectTranslations = sqliteTable(
   ],
 );
 
-export const tags = sqliteTable(
+export const tags = mysqlTable(
   'tags',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    name: text('name').notNull(),
-    slug: text('slug').notNull().unique(),
-    kind: text('kind', { enum: ['topic', 'tech'] }).notNull().default('topic'),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    id: int('id').autoincrement().primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 255 }).notNull().unique(),
+    kind: mysqlEnum('kind', ['topic', 'tech']).notNull().default('topic'),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [index('tags_kind_idx').on(table.kind)],
 );
 
-export const postTags = sqliteTable(
+export const postTags = mysqlTable(
   'post_tags',
   {
-    postId: integer('post_id')
+    postId: int('post_id')
       .notNull()
       .references(() => posts.id, { onDelete: 'cascade' }),
-    tagId: integer('tag_id')
+    tagId: int('tag_id')
       .notNull()
       .references(() => tags.id, { onDelete: 'cascade' }),
   },
   (table) => [primaryKey({ columns: [table.postId, table.tagId] })],
 );
 
-export const projectTags = sqliteTable(
+export const projectTags = mysqlTable(
   'project_tags',
   {
-    projectId: integer('project_id')
+    projectId: int('project_id')
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
-    tagId: integer('tag_id')
+    tagId: int('tag_id')
       .notNull()
       .references(() => tags.id, { onDelete: 'cascade' }),
   },
   (table) => [primaryKey({ columns: [table.projectId, table.tagId] })],
 );
 
-export const siteSettings = sqliteTable('site_settings', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+export const siteSettings = mysqlTable('site_settings', {
+  key: varchar('key', { length: 191 }).primaryKey(),
+  value: mediumtext('value').notNull(),
+  updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
 });
 
-export const publishingJobs = sqliteTable(
+export const publishingJobs = mysqlTable(
   'publishing_jobs',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    status: text('status', { enum: ['running', 'success', 'failed', 'rolled_back'] }).notNull(),
-    triggerSource: text('trigger_source').notNull().default('admin'),
-    triggeredByUserId: integer('triggered_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    id: int('id').autoincrement().primaryKey(),
+    status: mysqlEnum('status', ['running', 'success', 'failed', 'rolled_back']).notNull(),
+    triggerSource: varchar('trigger_source', { length: 64 }).notNull().default('admin'),
+    triggeredByUserId: int('triggered_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     summary: text('summary'),
-    logs: text('logs').notNull().default(''),
+    logs: mediumtext('logs').notNull(),
     errorMessage: text('error_message'),
-    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
-    finishedAt: integer('finished_at', { mode: 'timestamp_ms' }),
+    startedAt: datetime('started_at', { mode: 'date', fsp: 3 }).notNull(),
+    finishedAt: datetime('finished_at', { mode: 'date', fsp: 3 }),
   },
   (table) => [index('publishing_jobs_status_started_idx').on(table.status, table.startedAt)],
 );
 
-export const urlRedirects = sqliteTable(
+export const urlRedirects = mysqlTable(
   'url_redirects',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    locale: text('locale', { enum: ['id', 'en'] }).notNull(),
-    contentType: text('content_type', { enum: ['post', 'project'] }).notNull(),
-    fromPath: text('from_path').notNull().unique(),
-    toPath: text('to_path').notNull(),
-    statusCode: integer('status_code').notNull().default(301),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    id: int('id').autoincrement().primaryKey(),
+    locale: mysqlEnum('locale', ['id', 'en']).notNull(),
+    contentType: mysqlEnum('content_type', ['post', 'project']).notNull(),
+    fromPath: varchar('from_path', { length: 255 }).notNull().unique(),
+    toPath: varchar('to_path', { length: 255 }).notNull(),
+    statusCode: int('status_code').notNull().default(301),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [index('url_redirects_locale_idx').on(table.locale)],
 );
