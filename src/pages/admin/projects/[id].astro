@@ -6,7 +6,7 @@ import { media, projects, projectTags, projectTranslations, tags } from '../../.
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminStickyHeader from '../../../components/admin/AdminStickyHeader.astro';
 import CodeMirrorEditor from '../../../components/admin/CodeMirrorEditor.astro';
-import CoverImagePicker from '../../../components/admin/CoverImagePicker.astro';
+import ProjectImageGalleryPicker from '../../../components/admin/ProjectImageGalleryPicker.astro';
 
 const rawId = Astro.params.id;
 const isNew = rawId === 'new';
@@ -36,6 +36,13 @@ if (projectId) {
     .innerJoin(tags, eq(projectTags.tagId, tags.id))
     .where(eq(projectTags.projectId, projectId));
   tagNames = tagRows.map((r) => r.name);
+}
+
+let initialGallery: Array<{ url: string; alt: string; caption?: string; mediaId?: number }> = [];
+try {
+  initialGallery = JSON.parse(projRow?.galleryJson || '[]');
+} catch {
+  initialGallery = [];
 }
 
 const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).limit(500);
@@ -75,11 +82,12 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
         </div>
       </div>
 
-      <CoverImagePicker
-        inputId="proj-cover"
+      <ProjectImageGalleryPicker
+        coverInputId="proj-cover"
+        galleryInputId="proj-gallery-json"
         mediaList={mediaList}
-        selectedId={projRow?.coverMediaId ?? null}
-        hint="Displayed at 16:9 on project cards and detail pages."
+        initialCoverId={projRow?.coverMediaId ?? null}
+        initialGallery={initialGallery}
       />
 
       <div>
@@ -274,6 +282,13 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
     const rawId = form.dataset.projectId;
     const projectId = rawId ? Number(rawId) : null;
 
+    let galleryPayload: Array<{ url: string; alt: string; caption?: string }> = [];
+    try {
+      galleryPayload = JSON.parse(val('proj-gallery-json') || '[]');
+    } catch {
+      galleryPayload = [];
+    }
+
     const payload = {
       id: projectId,
       category: val('proj-category') || 'fullstack',
@@ -282,7 +297,7 @@ const mediaList = await db.select().from(media).orderBy(desc(media.createdAt)).l
       demoUrl: val('proj-demo'),
       repoUrl: val('proj-repo'),
       coverMediaId: val('proj-cover') ? Number(val('proj-cover')) : null,
-      gallery: [],
+      gallery: galleryPayload,
       sortOrder: Number(val('proj-sort') || 0),
       tags: val('proj-tags').split(',').map((s) => s.trim()).filter(Boolean),
       translations: {
