@@ -1,50 +1,27 @@
-import { Database } from 'bun:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
+import { createBackupArchive } from '../src/lib/backup-service';
+import { closeDb } from '../src/db';
 
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-export-'));
-const snapshotDb = path.join(tempDir, 'portfolio.db');
-const normalizedSnapshot = snapshotDb.replace(/\\/g, '/').replace(/'/g, "''");
+async function main() {
+  console.log('Generating transfer archive from MySQL and uploads...');
+  const archivePath = await createBackupArchive();
+  const targetArchive = path.resolve(process.cwd(), 'data-transfer.tar.gz');
 
-console.log('Connecting to local portfolio.db...');
-const db = new Database('data/portfolio.db');
-db.exec(`VACUUM INTO '${normalizedSnapshot}';`);
-db.close();
+  if (fs.existsSync(targetArchive)) {
+    fs.unlinkSync(targetArchive);
+  }
 
-console.log('Snapshot created successfully at:', snapshotDb);
+  fs.copyFileSync(archivePath, targetArchive);
+  fs.unlinkSync(archivePath);
 
-// Verify snapshot
-const test = new Database(snapshotDb, { readonly: true });
-const tables = test.query("SELECT name FROM sqlite_master WHERE type='table';").all();
-console.log('Verified tables in snapshot:', tables.length);
-test.close();
-
-// Build data-transfer.tar.gz
-const targetArchive = path.resolve(process.cwd(), 'data-transfer.tar.gz');
-if (fs.existsSync(targetArchive)) {
-  fs.unlinkSync(targetArchive);
+  const stats = fs.statSync(targetArchive);
+  console.log(`data-transfer.tar.gz created successfully! Size: ${stats.size} bytes`);
+  await closeDb();
 }
 
-const proc = Bun.spawn([
-  'tar',
-  '-czf',
-  targetArchive,
-  '-C',
-  tempDir,
-  'portfolio.db',
-  '-C',
-  path.resolve(process.cwd(), 'data'),
-  'uploads',
-]);
-
-const exitCode = await proc.exited;
-if (exitCode !== 0) {
-  const err = await new Response(proc.stderr).text();
-  console.error('Tar creation failed:', err);
+main().catch(async (err) => {
+  console.error('Export failed:', err);
+  await closeDb();
   process.exit(1);
-}
-
-console.log('data-transfer.tar.gz created successfully! Size:', fs.statSync(targetArchive).size, 'bytes');
-
-fs.rmSync(tempDir, { recursive: true, force: true });
+});

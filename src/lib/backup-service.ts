@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { closeDb, getSqlite, getDb } from '../db';
+import { db } from '../db';
+import * as schema from '../db/schema';
 import { env } from './env';
+import { migrateSqliteToMysql } from '../../scripts/migrate-sqlite-to-mysql';
 
 export interface RestoreResult {
   success: boolean;
@@ -11,44 +13,60 @@ export interface RestoreResult {
 }
 
 /**
- * Creates a standalone .tar.gz archive containing a WAL-safe SQLite snapshot
- * and the uploads directory.
+ * Creates a standalone .tar.gz archive containing a structured JSON dump
+ * of all MySQL tables and the uploads directory.
  */
 export async function createBackupArchive(): Promise<string> {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-backup-'));
-  const tempDbPath = path.join(tempDir, 'portfolio.db');
+  const exportJsonPath = path.join(tempDir, 'data-export.json');
 
-  // 1. Take a safe point-in-time SQLite snapshot
-  const sqlite = getSqlite();
-  const escaped = tempDbPath.replace(/\\/g, '/').replace(/'/g, "''");
-  sqlite.exec(`VACUUM INTO '${escaped}';`);
+  // 1. Export all table data to JSON
+  const data = {
+    version: '2.0.0',
+    dialect: 'mysql',
+    timestamp: new Date().toISOString(),
+    tables: {
+      users: await db.select().from(schema.users),
+      media: await db.select().from(schema.media),
+      posts: await db.select().from(schema.posts),
+      postTranslations: await db.select().from(schema.postTranslations),
+      projects: await db.select().from(schema.projects),
+      projectTranslations: await db.select().from(schema.projectTranslations),
+      freelanceProjects: await db.select().from(schema.freelanceProjects),
+      freelanceProjectTranslations: await db.select().from(schema.freelanceProjectTranslations),
+      tags: await db.select().from(schema.tags),
+      postTags: await db.select().from(schema.postTags),
+      projectTags: await db.select().from(schema.projectTags),
+      siteSettings: await db.select().from(schema.siteSettings),
+      publishingJobs: await db.select().from(schema.publishingJobs),
+      urlRedirects: await db.select().from(schema.urlRedirects),
+    },
+  };
+
+  fs.writeFileSync(exportJsonPath, JSON.stringify(data, null, 2), 'utf-8');
 
   // 2. Prepare tar archive path
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const archivePath = path.join(tempDir, `portfolio-backup-${stamp}.tar.gz`);
 
-  const dataDir = path.dirname(env.DATABASE_PATH);
   const uploadsDir = env.UPLOAD_DIR;
-
-  // Check if uploads exists, if not create empty
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
-  // Copy uploads or run tar from tempDir and dataDir
-  // Using Bun.spawn with tar
-  // We'll create tar from tempDbPath and uploads directory
-  const uploadsRel = path.relative(dataDir, uploadsDir) || 'uploads';
+  const uploadsParent = path.dirname(uploadsDir);
+  const uploadsBase = path.basename(uploadsDir);
+
   const proc = Bun.spawn([
     'tar',
     '-czf',
     archivePath,
     '-C',
     tempDir,
-    'portfolio.db',
+    'data-export.json',
     '-C',
-    dataDir,
-    uploadsRel,
+    uploadsParent,
+    uploadsBase,
   ]);
 
   const exitCode = await proc.exited;
@@ -57,9 +75,9 @@ export async function createBackupArchive(): Promise<string> {
     throw new Error(`Failed to create backup archive (exit code ${exitCode}): ${errText}`);
   }
 
-  // Cleanup temporary db file
+  // Cleanup temporary JSON file
   try {
-    fs.unlinkSync(tempDbPath);
+    fs.unlinkSync(exportJsonPath);
   } catch {}
 
   return archivePath;
@@ -67,8 +85,7 @@ export async function createBackupArchive(): Promise<string> {
 
 /**
  * Restores data from an uploaded archive (.tar.gz, .tgz, or .db).
- * Uses SQLite ATTACH DATABASE to perform an atomic in-process restore
- * without breaking file handles or incurring WAL database locks.
+ * Supports both new JSON archives and legacy SQLite archives with automatic migration.
  */
 export async function restoreFromArchive(
   archiveFilePath: string,
@@ -85,23 +102,16 @@ export async function restoreFromArchive(
     };
   }
 
-  const dataDir = path.dirname(env.DATABASE_PATH);
-  const backupDir = path.join(dataDir, 'backups');
-  fs.mkdirSync(backupDir, { recursive: true });
-
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const safetyBackupPath = path.join(backupDir, `pre-restore-${stamp}.db`);
-
-  // Staging directory for safe extraction
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'portfolio-restore-staging-'));
 
   try {
     let candidateDbPath = '';
+    let jsonExportPath = '';
 
     if (isDb) {
       candidateDbPath = archiveFilePath;
     } else {
-      // 1. Extract tar to isolated staging directory
+      // 1. Extract tar to staging
       const proc = Bun.spawn(['tar', '-xzf', archiveFilePath, '-C', stagingDir]);
       const exitCode = await proc.exited;
       if (exitCode !== 0) {
@@ -109,7 +119,13 @@ export async function restoreFromArchive(
         throw new Error(`tar extraction failed (${exitCode}): ${errText}`);
       }
 
-      // Check for portfolio.db or any .db inside stagingDir
+      // Check if modern data-export.json exists
+      const directJson = path.join(stagingDir, 'data-export.json');
+      if (fs.existsSync(directJson)) {
+        jsonExportPath = directJson;
+      }
+
+      // Check for legacy portfolio.db or any .db inside stagingDir
       const directDb = path.join(stagingDir, 'portfolio.db');
       if (fs.existsSync(directDb)) {
         candidateDbPath = directDb;
@@ -120,7 +136,7 @@ export async function restoreFromArchive(
         }
       }
 
-      // Copy uploads if present in staging
+      // Restore uploads directory if present
       const stagingUploads = path.join(stagingDir, 'uploads');
       if (fs.existsSync(stagingUploads)) {
         fs.mkdirSync(env.UPLOAD_DIR, { recursive: true });
@@ -128,109 +144,164 @@ export async function restoreFromArchive(
       }
     }
 
-    if (!candidateDbPath || !fs.existsSync(candidateDbPath)) {
-      throw new Error('No valid SQLite database file found in archive.');
-    }
+    // 2. Perform restoration
+    if (jsonExportPath) {
+      const content = fs.readFileSync(jsonExportPath, 'utf-8');
+      const dump = JSON.parse(content);
+      const tables = dump.tables || {};
 
-    // 2. Validate candidate DB before touching production
-    const { Database } = await import('bun:sqlite');
-    const testCandidate = new Database(candidateDbPath, { readonly: true });
-    testCandidate.query('SELECT 1;').get();
-    testCandidate.close();
+      const toDate = (val: any) => (val ? new Date(val) : new Date());
+      const toOptionalDate = (val: any) => (val ? new Date(val) : null);
 
-    // 3. Create safety point-in-time snapshot of current live DB
-    const liveDb = getSqlite();
-    const safeBackupEscaped = safetyBackupPath.replace(/\\/g, '/').replace(/'/g, "''");
-    try {
-      liveDb.exec(`VACUUM INTO '${safeBackupEscaped}';`);
-    } catch {
-      if (fs.existsSync(env.DATABASE_PATH)) {
-        try {
-          fs.copyFileSync(env.DATABASE_PATH, safetyBackupPath);
-        } catch {}
-      }
-    }
-
-    // 4. ATTACH the candidate database into the live connection and atomic swap
-    const safeCandidatePath = candidateDbPath.replace(/\\/g, '/').replace(/'/g, "''");
-
-    try {
-      liveDb.exec('DETACH DATABASE backup_source;');
-    } catch {}
-
-    liveDb.exec(`ATTACH DATABASE '${safeCandidatePath}' AS backup_source;`);
-
-    try {
-      const existingTables = liveDb.query(
-        "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
-      ).all() as { name: string }[];
-
-      const tables = liveDb.query(
-        "SELECT name, sql FROM backup_source.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
-      ).all() as { name: string; sql: string }[];
-
-      if (tables.length === 0) {
-        throw new Error('Source database contains no tables.');
+      if (Array.isArray(tables.users)) {
+        for (const r of tables.users) {
+          await db.insert(schema.users).ignore().values({
+            ...r,
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
       }
 
-      const indexes = liveDb.query(
-        "SELECT sql FROM backup_source.sqlite_master WHERE type='index' AND sql IS NOT NULL;"
-      ).all() as { sql: string }[];
-
-      // CRITICAL: SQLite requires foreign_keys=OFF to be set OUTSIDE a transaction
-      liveDb.exec('PRAGMA foreign_keys = OFF;');
-      liveDb.exec('PRAGMA legacy_alter_table = ON;');
-
-      try {
-        // Run restore inside an atomic transaction
-        liveDb.transaction(() => {
-          // 1. Drop existing tables in main
-          for (const { name } of existingTables) {
-            liveDb.exec(`DROP TABLE IF EXISTS main."${name}";`);
-          }
-
-          // 2. Re-create and populate tables from backup
-          for (const table of tables) {
-            liveDb.exec(table.sql);
-            liveDb.exec(`INSERT INTO main."${table.name}" SELECT * FROM backup_source."${table.name}";`);
-          }
-
-          // 3. Re-create indexes
-          for (const idx of indexes) {
-            try {
-              liveDb.exec(idx.sql);
-            } catch {}
-          }
-        })();
-      } finally {
-        liveDb.exec('PRAGMA foreign_keys = ON;');
-        liveDb.exec('PRAGMA legacy_alter_table = OFF;');
+      if (Array.isArray(tables.media)) {
+        for (const r of tables.media) {
+          await db.insert(schema.media).ignore().values({
+            ...r,
+            createdAt: toDate(r.createdAt),
+          });
+        }
       }
-    } finally {
-      try {
-        liveDb.exec('DETACH DATABASE backup_source;');
-      } catch {}
+
+      if (Array.isArray(tables.posts)) {
+        for (const r of tables.posts) {
+          await db.insert(schema.posts).ignore().values({
+            ...r,
+            deletedAt: toOptionalDate(r.deletedAt),
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.postTranslations)) {
+        for (const r of tables.postTranslations) {
+          await db.insert(schema.postTranslations).ignore().values({
+            ...r,
+            publishedAt: toOptionalDate(r.publishedAt),
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.projects)) {
+        for (const r of tables.projects) {
+          await db.insert(schema.projects).ignore().values({
+            ...r,
+            deletedAt: toOptionalDate(r.deletedAt),
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.projectTranslations)) {
+        for (const r of tables.projectTranslations) {
+          await db.insert(schema.projectTranslations).ignore().values({
+            ...r,
+            publishedAt: toOptionalDate(r.publishedAt),
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.freelanceProjects)) {
+        for (const r of tables.freelanceProjects) {
+          await db.insert(schema.freelanceProjects).ignore().values({
+            ...r,
+            deletedAt: toOptionalDate(r.deletedAt),
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.freelanceProjectTranslations)) {
+        for (const r of tables.freelanceProjectTranslations) {
+          await db.insert(schema.freelanceProjectTranslations).ignore().values({
+            ...r,
+            publishedAt: toOptionalDate(r.publishedAt),
+            createdAt: toDate(r.createdAt),
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.tags)) {
+        for (const r of tables.tags) {
+          await db.insert(schema.tags).ignore().values({
+            ...r,
+            createdAt: toDate(r.createdAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.postTags)) {
+        for (const r of tables.postTags) {
+          await db.insert(schema.postTags).ignore().values(r);
+        }
+      }
+
+      if (Array.isArray(tables.projectTags)) {
+        for (const r of tables.projectTags) {
+          await db.insert(schema.projectTags).ignore().values(r);
+        }
+      }
+
+      if (Array.isArray(tables.siteSettings)) {
+        for (const r of tables.siteSettings) {
+          await db.insert(schema.siteSettings).ignore().values({
+            ...r,
+            updatedAt: toDate(r.updatedAt),
+          });
+        }
+      }
+
+      if (Array.isArray(tables.urlRedirects)) {
+        for (const r of tables.urlRedirects) {
+          await db.insert(schema.urlRedirects).ignore().values({
+            ...r,
+            createdAt: toDate(r.createdAt),
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message: 'Data successfully restored from JSON archive. Please publish the static site to apply updates.',
+      };
+    } else if (candidateDbPath && fs.existsSync(candidateDbPath)) {
+      // Legacy SQLite archive restoration
+      console.log(`[restore] Detected legacy SQLite archive at ${candidateDbPath}. Running migration...`);
+      const result = await migrateSqliteToMysql(candidateDbPath);
+      return {
+        success: result.migrated,
+        message: result.migrated
+          ? 'Legacy SQLite data successfully migrated into MySQL! Please publish the static site to apply updates.'
+          : 'Legacy SQLite restore failed.',
+      };
+    } else {
+      throw new Error('No valid database payload (data-export.json or portfolio.db) found in archive.');
     }
-
-    // 5. Verify live database reopens cleanly
-    liveDb.query('SELECT 1;').get();
-
-    return {
-      success: true,
-      message: 'Data successfully restored. Please publish the static site to apply updates.',
-      safetyBackupPath,
-    };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('Restore error:', errorMsg);
-
     return {
       success: false,
-      message: `Restore failed: ${errorMsg}. Reverted to previous state.`,
-      safetyBackupPath,
+      message: `Restore failed: ${errorMsg}.`,
     };
   } finally {
-    // Cleanup staging directory
     try {
       fs.rmSync(stagingDir, { recursive: true, force: true });
     } catch {}

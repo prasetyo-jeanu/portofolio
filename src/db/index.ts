@@ -1,6 +1,5 @@
 import mysql from 'mysql2/promise';
 import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
-import { Database } from 'bun:sqlite';
 import * as schema from './schema';
 import { env } from '../lib/env';
 
@@ -49,10 +48,6 @@ export async function closeDb(): Promise<void> {
     pool = null;
     dbInstance = null;
   }
-}
-
-export function getSqlite(): Database {
-  return new Database(env.DATABASE_PATH, { create: true });
 }
 
 export const db: MySql2Database<typeof schema> = new Proxy({} as MySql2Database<typeof schema>, {
