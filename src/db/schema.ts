@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   index,
   mysqlEnum,
+  foreignKey,
 } from 'drizzle-orm/mysql-core';
 
 export const users = mysqlTable('users', {
@@ -176,9 +177,7 @@ export const freelanceProjectTranslations = mysqlTable(
   'freelance_project_translations',
   {
     id: int('id').autoincrement().primaryKey(),
-    freelanceProjectId: int('freelance_project_id')
-      .notNull()
-      .references(() => freelanceProjects.id, { onDelete: 'cascade' }),
+    freelanceProjectId: int('freelance_project_id').notNull(),
     locale: mysqlEnum('locale', ['id', 'en']).notNull(),
     title: varchar('title', { length: 255 }).notNull(),
     slug: varchar('slug', { length: 255 }).notNull(),
@@ -194,6 +193,11 @@ export const freelanceProjectTranslations = mysqlTable(
     updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
   },
   (table) => [
+    foreignKey({
+      name: 'fk_freelance_trans_project_id',
+      columns: [table.freelanceProjectId],
+      foreignColumns: [freelanceProjects.id],
+    }).onDelete('cascade'),
     uniqueIndex('freelance_translations_project_locale_uq').on(table.freelanceProjectId, table.locale),
     uniqueIndex('freelance_translations_locale_slug_uq').on(table.locale, table.slug),
     index('freelance_translations_locale_status_pub_idx').on(table.locale, table.status, table.publishedAt),

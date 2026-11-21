@@ -1,26 +1,12 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "mysql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1794647569973,
-      "tag": "0000_stormy_serpent_society",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1794709145806,
-      "tag": "0001_violet_hannibal_king",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1794717487241,
-      "tag": "0002_petite_sue_storm",
+      "version": "5",
+      "when": 1795246099462,
+      "tag": "0000_medical_christian_walker",
       "breakpoints": true
     }
   ]
